@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crop Yield Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #f4f6f9;
+            text-align: center;
+        }
+
+        .container {
+            width: 60%;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+        }
+
+        input {
+            padding: 8px;
+            margin: 5px;
+            width: 60%;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: #2c7a7b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .card {
+            background: #e6fffa;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 8px;
+        }
+
+        table {
+            margin: auto;
+            border-collapse: collapse;
+            width: 80%;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        th {
+            background: #2c7a7b;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🌾 Crop Yield Prediction System</h1>
+
+<form method="POST">
+    <input type="text" name="soil" placeholder="Soil Type"><br>
+    <input type="number" name="moisture" placeholder="Moisture"><br>
+    <input type="number" name="temp" placeholder="Temperature"><br>
+    <input type="number" name="rainfall" placeholder="Rainfall"><br>
+    <input type="number" name="humidity" placeholder="Humidity"><br>
+    <input type="number" name="sunlight" placeholder="Sunlight"><br><br>
+
+    <button type="submit">Predict</button>
+</form>
+
+{% if prediction %}
+
+<div class="card">
+    <h2> Yield: {{prediction}} kg/hectare</h2>
+</div>
+
+<div class="card">
+    <h3> Crop: {{selected_crop}}</h3>
+    <h3> Price: ₹{{price}} /kg</h3>
+    <h3> Cost: ₹{{cost}}</h3>
+    <h3> Revenue: ₹{{revenue}}</h3>
+    <h3> Profit: ₹{{profit}}</h3>
+</div>
+
+<div class="card">
+    <h3> Avg Yield: {{avg_yield}}</h3>
+    <h3> Trend: {{comparison}}</h3>
+    <h3> Risk: {{risk}}</h3>
+</div>
+
+{% endif %}
+
+<h2> Past Data</h2>
+
+<table>
+<tr>
+<th>Soil</th>
+<th>Yield</th>
+</tr>
+
+{% for row in past_data %}
+<tr>
+<td>{{row.soil_type}}</td>
+<td>{{row.yield_kg_per_hectare}}</td>
+</tr>
+{% endfor %}
+</table>
+
+</div>
+
+</body>
+</html>
