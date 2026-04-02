@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>Crop Yield Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         body {
@@ -17,7 +16,6 @@
             background: white;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
         }
 
         input {
@@ -40,22 +38,6 @@
             margin: 10px;
             border-radius: 8px;
         }
-
-        table {
-            margin: auto;
-            border-collapse: collapse;
-            width: 80%;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-
-        th {
-            background: #2c7a7b;
-            color: white;
-        }
     </style>
 </head>
 
@@ -65,13 +47,16 @@
 
 <h1>🌾 Crop Yield Prediction System</h1>
 
-<form method="POST">
-    <input type="text" name="soil" placeholder="Soil Type"><br>
-    <input type="number" name="moisture" placeholder="Moisture"><br>
-    <input type="number" name="temp" placeholder="Temperature"><br>
-    <input type="number" name="rainfall" placeholder="Rainfall"><br>
-    <input type="number" name="humidity" placeholder="Humidity"><br>
-    <input type="number" name="sunlight" placeholder="Sunlight"><br><br>
+<form method="POST" enctype="multipart/form-data">
+    <h3>Upload CSV (optional)</h3>
+    <input type="file" name="file"><br><br>
+
+    <input type="text" name="soil" placeholder="Soil Type" value="{{soil}}"><br>
+    <input type="number" name="moisture" placeholder="Moisture" value="{{moisture}}"><br>
+    <input type="number" name="temp" placeholder="Temperature" value="{{temp}}"><br>
+    <input type="number" name="rainfall" placeholder="Rainfall" value="{{rainfall}}"><br>
+    <input type="number" name="humidity" placeholder="Humidity" value="{{humidity}}"><br>
+    <input type="number" name="sunlight" placeholder="Sunlight" value="{{sunlight}}"><br><br>
 
     <button type="submit">Predict</button>
 </form>
@@ -97,22 +82,6 @@
 </div>
 
 {% endif %}
-
-<h2> Past Data</h2>
-
-<table>
-<tr>
-<th>Soil</th>
-<th>Yield</th>
-</tr>
-
-{% for row in past_data %}
-<tr>
-<td>{{row.soil_type}}</td>
-<td>{{row.yield_kg_per_hectare}}</td>
-</tr>
-{% endfor %}
-</table>
 
 </div>
 
