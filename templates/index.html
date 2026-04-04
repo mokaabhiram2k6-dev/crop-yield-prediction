@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>Crop Yield Dashboard</title>
-
     <style>
         body {
             font-family: Arial;
@@ -16,12 +15,15 @@
             background: white;
             padding: 20px;
             border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
         }
 
         input {
-            padding: 8px;
-            margin: 5px;
-            width: 60%;
+            padding: 10px;
+            margin: 6px;
+            width: 70%;
+            border-radius: 5px;
+            border: 1px solid #ccc;
         }
 
         button {
@@ -30,13 +32,18 @@
             color: white;
             border: none;
             border-radius: 5px;
+            cursor: pointer;
         }
 
         .card {
             background: #e6fffa;
-            padding: 10px;
-            margin: 10px;
+            padding: 15px;
+            margin: 15px;
             border-radius: 8px;
+        }
+
+        h1 {
+            color: #2c7a7b;
         }
     </style>
 </head>
@@ -47,38 +54,41 @@
 
 <h1>🌾 Crop Yield Prediction System</h1>
 
+<!-- FORM -->
 <form method="POST" enctype="multipart/form-data">
-    <h3>Upload CSV (optional)</h3>
+
+    <h3>📂 Upload CSV (Optional)</h3>
     <input type="file" name="file"><br><br>
 
-    <input type="text" name="soil" placeholder="Soil Type" value="{{soil}}"><br>
-    <input type="number" name="moisture" placeholder="Moisture" value="{{moisture}}"><br>
-    <input type="number" name="temp" placeholder="Temperature" value="{{temp}}"><br>
-    <input type="number" name="rainfall" placeholder="Rainfall" value="{{rainfall}}"><br>
-    <input type="number" name="humidity" placeholder="Humidity" value="{{humidity}}"><br>
-    <input type="number" name="sunlight" placeholder="Sunlight" value="{{sunlight}}"><br><br>
+    <h3>✍️ Or Enter Manually</h3>
 
-    <button type="submit">Predict</button>
+    <input type="text" name="soil" placeholder="Soil Type (e.g., red soil)" required><br>
+    <input type="number" step="any" name="moisture" placeholder="Soil Moisture (%)" required><br>
+    <input type="number" step="any" name="temp" placeholder="Temperature (°C)" required><br>
+    <input type="number" step="any" name="rainfall" placeholder="Rainfall (mm)" required><br>
+    <input type="number" step="any" name="humidity" placeholder="Humidity (%)" required><br>
+    <input type="number" step="any" name="sunlight" placeholder="Sunlight Hours" required><br><br>
+
+    <button type="submit">🚀 Predict</button>
 </form>
 
+<!-- OUTPUT -->
 {% if prediction %}
 
 <div class="card">
-    <h2> Yield: {{prediction}} kg/hectare</h2>
+    <h2>🌾 Yield: {{prediction}} kg/hectare</h2>
 </div>
 
 <div class="card">
-    <h3> Crop: {{selected_crop}}</h3>
-    <h3> Price: ₹{{price}} /kg</h3>
-    <h3> Cost: ₹{{cost}}</h3>
-    <h3> Revenue: ₹{{revenue}}</h3>
-    <h3> Profit: ₹{{profit}}</h3>
+    <h3>🌱 Crop: {{selected_crop}}</h3>
+    <h3>💰 Price: ₹{{price}} /kg</h3>
+    <h3>🧑‍🌾 Cost: ₹{{cost}}</h3>
+    <h3>📈 Revenue: ₹{{revenue}}</h3>
+    <h3>📊 Profit: ₹{{profit}}</h3>
 </div>
 
 <div class="card">
-    <h3> Avg Yield: {{avg_yield}}</h3>
-    <h3> Trend: {{comparison}}</h3>
-    <h3> Risk: {{risk}}</h3>
+    <h3>📊 Average Yield: {{avg_yield}}</h3>
 </div>
 
 {% endif %}
