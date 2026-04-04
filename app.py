@@ -14,14 +14,17 @@ def clean_text(text):
     return str(text).lower().replace(" ", "").replace("_", "")
 
 # Soil cleaning
+original_soils = df["soil_type"].unique()
+cleaned_soils = [clean_text(s) for s in original_soils]
 df["soil_type"] = df["soil_type"].apply(clean_text)
 
+# Features
 features = [
     "soil_type",
-    "soil_moisture_%",
+    "soil_moisture_%", 
     "temperature_c",
     "rainfall_mm",
-    "humidity_%",
+    "humidity_%", 
     "sunlight_hours"
 ]
 
@@ -37,19 +40,20 @@ X["soil_type"] = le.fit_transform(X["soil_type"])
 # Scaling
 scaler = MinMaxScaler()
 num_cols = [
-    "soil_moisture_%",
+    "soil_moisture_%", 
     "temperature_c",
     "rainfall_mm",
-    "humidity_%",
+    "humidity_%", 
     "sunlight_hours"
 ]
+
 X[num_cols] = scaler.fit_transform(X[num_cols])
 
 # Model
 model = RandomForestRegressor(n_estimators=100, random_state=42)
 model.fit(X, y)
 
-# Crop data
+# Price & Cost
 crop_prices = {
     "Rice": 20,
     "Wheat": 22,
@@ -76,27 +80,20 @@ def index():
     cost = None
     revenue = None
     profit = None
-    comparison = None
-    risk = None
-
-    soil = ""
-    moisture = ""
-    temp = ""
-    rainfall = ""
-    humidity = ""
-    sunlight = ""
 
     avg_yield = round(df[target].mean(), 2)
 
     if request.method == "POST":
         try:
-            # CSV upload
-            if "file" in request.files and request.files["file"].filename != "":
-                file = request.files["file"]
+            # CSV Upload
+            file = request.files.get("file")
+
+            if file and file.filename.endswith(".csv"):
                 df_csv = pd.read_csv(file)
+
                 latest = df_csv.iloc[-1]
 
-                soil = clean_text(latest["soil_type"])
+                soil_input = latest["soil_type"]
                 moisture = float(latest["soil_moisture_%"])
                 temp = float(latest["temperature_c"])
                 rainfall = float(latest["rainfall_mm"])
@@ -104,16 +101,23 @@ def index():
                 sunlight = float(latest["sunlight_hours"])
 
             else:
-                soil = clean_text(request.form["soil"])
+                # Manual input
+                soil_input = request.form["soil"]
                 moisture = float(request.form["moisture"])
                 temp = float(request.form["temp"])
                 rainfall = float(request.form["rainfall"])
                 humidity = float(request.form["humidity"])
                 sunlight = float(request.form["sunlight"])
 
-            # Model input
+            # Clean + match soil
+            cleaned_input = clean_text(soil_input)
+
+            match = get_close_matches(cleaned_input, cleaned_soils, n=1, cutoff=0.5)
+            soil_type = match[0] if match else cleaned_input
+
+            # Prepare data
             user_data = pd.DataFrame([{
-                "soil_type": soil,
+                "soil_type": soil_type,
                 "soil_moisture_%": moisture,
                 "temperature_c": temp,
                 "rainfall_mm": rainfall,
@@ -121,32 +125,39 @@ def index():
                 "sunlight_hours": sunlight
             }])
 
-            user_data["soil_type"] = le.transform(user_data["soil_type"])
-            user_data[num_cols] = scaler.transform(user_data[num_cols])
+            # SAFE encoding
+            try:
+                user_data["soil_type"] = le.transform(user_data["soil_type"])
+            except:
+                user_data["soil_type"] = 0
 
+            # SAFE scaling
+            try:
+                user_data[num_cols] = scaler.transform(user_data[num_cols])
+            except:
+                prediction = "Error"
+                return render_template("index.html", prediction=prediction)
+
+            # Prediction
             prediction = round(model.predict(user_data)[0], 2)
 
             # Crop suggestion
-            if "red" in soil:
+            if "red" in soil_type:
                 selected_crop = "Groundnut"
-            elif "clay" in soil:
+            elif "clay" in soil_type:
                 selected_crop = "Rice"
             else:
                 selected_crop = "Wheat"
 
-            price = crop_prices[selected_crop]
-            cost = crop_costs[selected_crop]
+            # Price & cost
+            price = crop_prices.get(selected_crop, 20)
+            cost = crop_costs.get(selected_crop, 25000)
 
             revenue = prediction * price
             profit = revenue - cost
 
-            # Comparison
-            comparison = "Increase 📈" if prediction > avg_yield else "Decrease 📉"
-
-            # Risk
-            risk = "High Risk ⚠️" if rainfall < 40 or temp > 35 else "Safe ✅"
-
         except Exception as e:
+            print("ERROR:", e)
             prediction = "Error"
 
     return render_template(
@@ -157,15 +168,7 @@ def index():
         cost=cost,
         revenue=revenue,
         profit=profit,
-        avg_yield=avg_yield,
-        comparison=comparison,
-        risk=risk,
-        soil=soil,
-        moisture=moisture,
-        temp=temp,
-        rainfall=rainfall,
-        humidity=humidity,
-        sunlight=sunlight
+        avg_yield=avg_yield
     )
 
 if __name__ == "__main__":
