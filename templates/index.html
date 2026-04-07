@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Crop Yield Dashboard</title>
+
     <style>
         body {
             font-family: Arial;
@@ -32,7 +33,6 @@
             color: white;
             border: none;
             border-radius: 5px;
-            cursor: pointer;
         }
 
         .card {
@@ -40,10 +40,6 @@
             padding: 15px;
             margin: 15px;
             border-radius: 8px;
-        }
-
-        h1 {
-            color: #2c7a7b;
         }
     </style>
 </head>
@@ -54,7 +50,6 @@
 
 <h1>🌾 Crop Yield Prediction System</h1>
 
-<!-- FORM -->
 <form method="POST" enctype="multipart/form-data">
 
     <h3>📂 Upload CSV (Optional)</h3>
@@ -62,17 +57,17 @@
 
     <h3>✍️ Or Enter Manually</h3>
 
-    <input type="text" name="soil" placeholder="Soil Type (e.g., red soil)" required><br>
-    <input type="number" step="any" name="moisture" placeholder="Soil Moisture (%)" required><br>
-    <input type="number" step="any" name="temp" placeholder="Temperature (°C)" required><br>
-    <input type="number" step="any" name="rainfall" placeholder="Rainfall (mm)" required><br>
-    <input type="number" step="any" name="humidity" placeholder="Humidity (%)" required><br>
-    <input type="number" step="any" name="sunlight" placeholder="Sunlight Hours" required><br><br>
+    <input type="text" name="soil" placeholder="Soil Type">
+    <input type="number" step="any" name="moisture" placeholder="Soil Moisture (%)">
+    <input type="number" step="any" name="temp" placeholder="Temperature (°C)">
+    <input type="number" step="any" name="rainfall" placeholder="Rainfall (mm)">
+    <input type="number" step="any" name="humidity" placeholder="Humidity (%)">
+    <input type="number" step="any" name="sunlight" placeholder="Sunlight Hours">
 
+    <br><br>
     <button type="submit">🚀 Predict</button>
 </form>
 
-<!-- OUTPUT -->
 {% if prediction %}
 
 <div class="card">
@@ -90,6 +85,13 @@
 <div class="card">
     <h3>📊 Average Yield: {{avg_yield}}</h3>
 </div>
+
+{% endif %}
+
+</div>
+
+</body>
+</html>
 
 {% endif %}
 
