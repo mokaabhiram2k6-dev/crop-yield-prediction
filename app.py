@@ -13,7 +13,7 @@ df.columns = df.columns.str.strip().str.lower()
 def clean_text(text):
     return str(text).lower().replace(" ", "").replace("_", "")
 
-# Soil cleaning
+# Clean soil
 original_soils = df["soil_type"].unique()
 cleaned_soils = [clean_text(s) for s in original_soils]
 df["soil_type"] = df["soil_type"].apply(clean_text)
@@ -33,11 +33,11 @@ target = "yield_kg_per_hectare"
 X = df[features].copy()
 y = df[target]
 
-# Encoding
+# Encode
 le = LabelEncoder()
 X["soil_type"] = le.fit_transform(X["soil_type"])
 
-# Scaling
+# Scale
 scaler = MinMaxScaler()
 num_cols = [
     "soil_moisture_%", 
@@ -53,7 +53,7 @@ X[num_cols] = scaler.fit_transform(X[num_cols])
 model = RandomForestRegressor(n_estimators=100, random_state=42)
 model.fit(X, y)
 
-# Price & Cost
+# Prices & Costs
 crop_prices = {
     "Rice": 20,
     "Wheat": 22,
@@ -80,17 +80,14 @@ def index():
     cost = None
     revenue = None
     profit = None
-
     avg_yield = round(df[target].mean(), 2)
 
     if request.method == "POST":
         try:
-            # CSV Upload
             file = request.files.get("file")
 
             if file and file.filename.endswith(".csv"):
                 df_csv = pd.read_csv(file)
-
                 latest = df_csv.iloc[-1]
 
                 soil_input = latest["soil_type"]
@@ -101,21 +98,17 @@ def index():
                 sunlight = float(latest["sunlight_hours"])
 
             else:
-                # Manual input
-                soil_input = request.form["soil"]
-                moisture = float(request.form["moisture"])
-                temp = float(request.form["temp"])
-                rainfall = float(request.form["rainfall"])
-                humidity = float(request.form["humidity"])
-                sunlight = float(request.form["sunlight"])
+                soil_input = request.form.get("soil", "")
+                moisture = float(request.form.get("moisture", 0))
+                temp = float(request.form.get("temp", 0))
+                rainfall = float(request.form.get("rainfall", 0))
+                humidity = float(request.form.get("humidity", 0))
+                sunlight = float(request.form.get("sunlight", 0))
 
-            # Clean + match soil
             cleaned_input = clean_text(soil_input)
-
             match = get_close_matches(cleaned_input, cleaned_soils, n=1, cutoff=0.5)
             soil_type = match[0] if match else cleaned_input
 
-            # Prepare data
             user_data = pd.DataFrame([{
                 "soil_type": soil_type,
                 "soil_moisture_%": moisture,
@@ -125,23 +118,18 @@ def index():
                 "sunlight_hours": sunlight
             }])
 
-            # SAFE encoding
+            # Safe encoding
             try:
                 user_data["soil_type"] = le.transform(user_data["soil_type"])
             except:
                 user_data["soil_type"] = 0
 
-            # SAFE scaling
-            try:
-                user_data[num_cols] = scaler.transform(user_data[num_cols])
-            except:
-                prediction = "Error"
-                return render_template("index.html", prediction=prediction)
+            # Safe scaling
+            user_data[num_cols] = scaler.transform(user_data[num_cols])
 
-            # Prediction
             prediction = round(model.predict(user_data)[0], 2)
 
-            # Crop suggestion
+            # Crop logic
             if "red" in soil_type:
                 selected_crop = "Groundnut"
             elif "clay" in soil_type:
@@ -149,7 +137,6 @@ def index():
             else:
                 selected_crop = "Wheat"
 
-            # Price & cost
             price = crop_prices.get(selected_crop, 20)
             cost = crop_costs.get(selected_crop, 25000)
 
