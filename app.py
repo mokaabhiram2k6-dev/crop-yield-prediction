@@ -101,7 +101,7 @@ def index():
             humidity = float(request.form["humidity"])
             sunlight = float(request.form["sunlight"])
 
-            # SAFE ENCODING
+            # ENCODE SOIL
             if soil in le.classes_:
                 soil_encoded = le.transform([soil])[0]
             else:
@@ -118,10 +118,10 @@ def index():
 
             user_data[num_cols] = scaler.transform(user_data[num_cols])
 
-            prediction = round(model.predict(user_data)[0])
+            prediction = round(model.predict(user_data)[0], 2)
 
             # =========================
-            # MULTI CROP LOGIC
+            # MULTIPLE CROPS LOGIC
             # =========================
             if moisture > 50:
                 suggested_crops = ["Rice", "Sugarcane", "Millets"]
@@ -130,14 +130,14 @@ def index():
             else:
                 suggested_crops = ["Wheat", "Maize", "Rice"]
 
-            # FIRST crop for calculation
+            # FIRST crop used for calculation
             selected_crop = suggested_crops[0]
 
-            price = crop_prices.get(selected_crop, 20)
-            cost = crop_costs.get(selected_crop, 25000)
+            price = crop_prices[selected_crop]
+            cost = crop_costs[selected_crop]
 
-            revenue = prediction * price
-            profit = revenue - cost
+            revenue = round(prediction * price, 2)
+            profit = round(revenue - cost, 2)
 
         except Exception as e:
             print(e)
