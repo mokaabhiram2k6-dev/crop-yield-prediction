@@ -20,7 +20,7 @@
       margin: 0 auto;
     }
 
-    /* ── Header ── */
+    /* Header */
     .header {
       text-align: center;
       margin-bottom: 28px;
@@ -37,7 +37,7 @@
       margin-top: 4px;
     }
 
-    /* ── Cards ── */
+    /* Cards */
     .card {
       background: #fff;
       border: 1px solid #e0e0e0;
@@ -54,7 +54,7 @@
       margin-bottom: 14px;
     }
 
-    /* ── Soil pills ── */
+    /* Soil pills */
     .pills { display: flex; flex-wrap: wrap; gap: 8px; }
     .pill {
       padding: 6px 16px;
@@ -70,7 +70,7 @@
     .pill:hover { background: #e8f5e9; }
     .pill.active { background: #1d9e75; color: #fff; border-color: #1d9e75; }
 
-    /* ── Form grid ── */
+    /* Form grid */
     .grid2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -96,7 +96,7 @@
     }
     .field input:focus { border-color: #1d9e75; }
 
-    /* ── Submit button ── */
+    /* Submit button */
     .btn-predict {
       width: 100%;
       padding: 13px;
@@ -114,32 +114,46 @@
     .btn-predict:hover { background: #0f6e56; }
     .btn-predict:active { transform: scale(0.99); }
 
-    /* ── Yield score banner ── */
+    /* Error banner */
+    .error-banner {
+      background: #fff5f5;
+      border: 1.5px solid #f5c6c6;
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: #c0392b;
+      font-size: 14px;
+      margin-top: 16px;
+    }
+
+    /* Yield score banner */
     .yield-banner {
       background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
       border: 1.5px solid #a5d6a7;
       border-radius: 12px;
       padding: 18px 24px;
+      margin-bottom: 8px;
+    }
+    .yield-banner-row {
       display: flex;
       align-items: baseline;
       gap: 10px;
-      margin-bottom: 20px;
     }
     .yield-label { font-size: 14px; color: #2e7d52; font-weight: 500; }
     .yield-value { font-size: 36px; font-weight: 700; color: #0f6e56; }
     .yield-unit  { font-size: 14px; color: #2e7d52; }
+    .yield-note  { font-size: 11px; color: #4caf50; margin-top: 4px; }
 
-    /* ── Section heading ── */
+    /* Section heading */
     .section-heading {
       font-size: 13px;
       font-weight: 700;
       color: #555;
       text-transform: uppercase;
       letter-spacing: 0.07em;
-      margin-bottom: 12px;
+      margin: 20px 0 12px;
     }
 
-    /* ── Crop cards ── */
+    /* Crop cards */
     .crop-card {
       background: #fff;
       border: 1px solid #e0e0e0;
@@ -195,12 +209,10 @@
     .profit-pos { color: #0f6e56; }
     .profit-neg { color: #c0392b; }
 
-    /* ── Responsive ── */
+    /* Responsive */
     @media (max-width: 480px) {
       .grid2 { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
-      .stats-grid .stat-box:nth-child(4),
-      .stats-grid .stat-box:nth-child(5) { grid-column: span 1; }
     }
   </style>
 </head>
@@ -210,7 +222,7 @@
   <!-- Header -->
   <div class="header">
     <h1>🌾 Crop Yield Prediction</h1>
-    <p>Enter your field conditions to get yield estimate and top crop suggestions</p>
+    <p>Enter your field conditions to get a suitability score and top crop suggestions</p>
   </div>
 
   <!-- Form -->
@@ -220,7 +232,7 @@
     <div class="card">
       <p class="card-title">Soil type</p>
       <div class="pills">
-        {% set soil_types = ["Loamy","Sandy","Clay","Silty","Peaty"] %}
+        {% set soil_types = ["Loamy","Sandy","Clay","Silty","Peaty","Red","Black","Alluvial","Laterite"] %}
         {% for s in soil_types %}
           <button
             type="button"
@@ -242,27 +254,27 @@
         <div class="field">
           <label>Soil moisture (%)</label>
           <input type="number" name="moisture" placeholder="e.g. 40"
-                 value="{{ form.get('moisture', '') }}" min="0" max="100" required>
+                 value="{{ form.get('moisture', '') }}" min="0" max="100" step="0.1" required>
         </div>
         <div class="field">
           <label>Temperature (°C)</label>
           <input type="number" name="temperature" placeholder="e.g. 28"
-                 value="{{ form.get('temperature', '') }}" required>
+                 value="{{ form.get('temperature', '') }}" min="-10" max="60" step="0.1" required>
         </div>
         <div class="field">
           <label>Rainfall (mm)</label>
           <input type="number" name="rainfall" placeholder="e.g. 120"
-                 value="{{ form.get('rainfall', '') }}" min="0" required>
+                 value="{{ form.get('rainfall', '') }}" min="0" max="5000" step="0.1" required>
         </div>
         <div class="field">
           <label>Humidity (%)</label>
           <input type="number" name="humidity" placeholder="e.g. 65"
-                 value="{{ form.get('humidity', '') }}" min="0" max="100" required>
+                 value="{{ form.get('humidity', '') }}" min="0" max="100" step="0.1" required>
         </div>
         <div class="field full">
           <label>Sunlight (hrs/day)</label>
           <input type="number" name="sunlight" placeholder="e.g. 8"
-                 value="{{ form.get('sunlight', '') }}" min="0" max="24" required>
+                 value="{{ form.get('sunlight', '') }}" min="0" max="24" step="0.1" required>
         </div>
       </div>
     </div>
@@ -270,15 +282,23 @@
     <button type="submit" class="btn-predict">Predict Yield &amp; Crops</button>
   </form>
 
+  <!-- Error -->
+  {% if error %}
+  <div class="error-banner">⚠️ {{ error }}</div>
+  {% endif %}
+
   <!-- Results -->
   {% if result is not none %}
   <div style="margin-top: 28px;">
 
-    <!-- Yield score -->
+    <!-- Suitability score -->
     <div class="yield-banner">
-      <span class="yield-label">Estimated yield</span>
-      <span class="yield-value">{{ "{:,.0f}".format(result) }}</span>
-      <span class="yield-unit">kg/hectare</span>
+      <div class="yield-banner-row">
+        <span class="yield-label">Suitability score</span>
+        <span class="yield-value">{{ "{:,.0f}".format(result) }}</span>
+        <span class="yield-unit">pts</span>
+      </div>
+      <div class="yield-note">Higher score = better growing conditions based on your inputs</div>
     </div>
 
     <!-- Top crops -->
@@ -302,21 +322,21 @@
           <div class="stat-value">{{ "{:,.0f}".format(c.yield) }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Price/kg (₹)</div>
-          <div class="stat-value">₹{{ c.price }}</div>
+          <div class="stat-label">Price/kg (&#8377;)</div>
+          <div class="stat-value">&#8377;{{ c.price }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Input cost (₹)</div>
-          <div class="stat-value">₹{{ "{:,.0f}".format(c.cost) }}</div>
+          <div class="stat-label">Input cost (&#8377;)</div>
+          <div class="stat-value">&#8377;{{ "{:,.0f}".format(c.cost) }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Revenue (₹)</div>
-          <div class="stat-value">₹{{ "{:,.0f}".format(c.revenue) }}</div>
+          <div class="stat-label">Revenue (&#8377;)</div>
+          <div class="stat-value">&#8377;{{ "{:,.0f}".format(c.revenue) }}</div>
         </div>
         <div class="stat-box">
-          <div class="stat-label">Net profit (₹)</div>
+          <div class="stat-label">Net profit (&#8377;)</div>
           <div class="stat-value {{ 'profit-pos' if c.profit >= 0 else 'profit-neg' }}">
-            {{ "+" if c.profit >= 0 else "" }}₹{{ "{:,.0f}".format(c.profit) }}
+            {{ "+" if c.profit >= 0 else "" }}&#8377;{{ "{:,.0f}".format(c.profit) }}
           </div>
         </div>
       </div>
