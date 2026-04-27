@@ -1,69 +1,49 @@
 from flask import Flask, render_template, request
 import pandas as pd
-from sklearn.linear_model import LinearRegression
 
 app = Flask(__name__)
 
 # =========================
-# LOAD DATA
+# LOAD & CLEAN DATA
 # =========================
-df1 = pd.read_excel("data1.xlsx", engine="openpyxl")
-df2 = pd.read_excel("data2.xlsx", engine="openpyxl")
+df1 = pd.read_excel("data1.xlsx")
+df2 = pd.read_excel("data2.xlsx")
 
-# normalize column names
+# Standardize column names
 df1.columns = df1.columns.str.strip().str.lower()
 df2.columns = df2.columns.str.strip().str.lower()
 
-# =========================
-# FIX YIELD
-# =========================
-# data1: m2 → hectare
-if "yield_kg_per_m2" in df1.columns:
-    df1["yield"] = df1["yield_kg_per_m2"] * 10000
-
-# data2: already hectare
-if "yield_kg_per_hectare" in df2.columns:
-    df2["yield"] = df2["yield_kg_per_hectare"]
-
-# =========================
-# RENAME COLUMNS
-# =========================
-df2 = df2.rename(columns={
-    "soil moisture_%": "soil_moisture",
-    "temperature_c": "temperature",
-    "rainfall_mm": "rainfall",
-    "humidity_%": "humidity",
-    "sunlight_hour": "sunlight"
+# Rename columns to common format
+df1 = df1.rename(columns={
+    "avg_temp": "temperature",
+    "humidity_r": "humidity",
+    "yield_kg_per_m2": "yield",
+    "crop_type": "crop_type",
+    "soil_type": "soil_type"
 })
 
-# =========================
-# MERGE DATA
-# =========================
+df2 = df2.rename(columns={
+    "temperature_c": "temperature",
+    "humidity_%": "humidity",
+    "yield_kg_per_hectare": "yield",
+    "crop_type": "crop_type",
+    "soil_type": "soil_type"
+})
+
+# Keep only required columns
+df1 = df1[["soil_type", "temperature", "humidity", "yield", "crop_type"]]
+df2 = df2[["soil_type", "temperature", "humidity", "yield", "crop_type"]]
+
+# Combine
 df = pd.concat([df1, df2], ignore_index=True)
 
-# =========================
-# CLEAN DATA
-# =========================
-df = df.fillna(0)
-
-# ensure required columns exist
-features = ["soil_moisture", "temperature", "rainfall", "humidity", "sunlight"]
-
-for col in features:
-    if col not in df.columns:
-        df[col] = 0
+# Clean data
+df = df.dropna()
+df["yield"] = pd.to_numeric(df["yield"], errors="coerce")
+df = df.dropna()
 
 # =========================
-# MODEL
-# =========================
-X = df[features]
-y = df["yield"]
-
-model = LinearRegression()
-model.fit(X, y)
-
-# =========================
-# ROUTE
+# ROUTES
 # =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -72,43 +52,56 @@ def index():
 
     if request.method == "POST":
         try:
-            soil_type = request.form["soil_type"]
+            soil = request.form.get("soil")
+            moisture = float(request.form.get("moisture"))
+            temp = float(request.form.get("temperature"))
+            rainfall = float(request.form.get("rainfall"))
+            humidity = float(request.form.get("humidity"))
+            sunlight = float(request.form.get("sunlight"))
 
-            moisture = float(request.form["moisture"])
-            temp = float(request.form["temperature"])
-            rain = float(request.form["rainfall"])
-            humidity = float(request.form["humidity"])
-            sunlight = float(request.form["sunlight"])
-
-            pred = model.predict([[moisture, temp, rain, humidity, sunlight]])[0]
+            # Simple prediction formula
+            result = (moisture * 10) + (temp * 20) + (rainfall * 5) + (humidity * 8) + (sunlight * 15)
 
             # =========================
-            # UNIQUE TOP 3 CROPS
+            # FILTER + TOP CROPS
             # =========================
             filtered = df.copy()
 
-            # optional: filter by soil type (safe check)
-            if "soil_type" in df.columns:
-                filtered = df[df["soil_type"].astype(str).str.lower() == soil_type.lower()]
-
+            if soil:
+                filtered = df[df["soil_type"].astype(str).str.lower() == soil.lower()]
                 if filtered.empty:
-                    filtered = df  # fallback
+                    filtered = df
 
             top = filtered.sort_values(by="yield", ascending=False)
 
-            # remove duplicate crops
+            # remove duplicates
             top_unique = top.drop_duplicates(subset=["crop_type"])
 
-            # pick top 3
             top3 = top_unique.head(3)
 
-            crops = top3[["crop_type"]].to_dict(orient="records")
+            # =========================
+            # ADD COST + PROFIT
+            # =========================
+            for _, row in top3.iterrows():
+                crop_name = row["crop_type"]
+                yield_val = row["yield"]
 
-            result = round(pred, 2)
+                price = 50      # default ₹/kg
+                cost = 20000    # default cost
+
+                revenue = yield_val * price
+                profit = revenue - cost
+
+                crops.append({
+                    "name": crop_name,
+                    "price": round(price, 2),
+                    "cost": round(cost, 2),
+                    "revenue": round(revenue, 2),
+                    "profit": round(profit, 2)
+                })
 
         except Exception as e:
             print("ERROR:", e)
-            result = "Error"
 
     return render_template("index.html", result=result, crops=crops)
 
