@@ -1,41 +1,345 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Crop Yield Prediction</title>
-    <style>
-        body { font-family: Arial; text-align: center; background: #f2f2f2; }
-        .box { background: white; padding: 20px; margin: 40px auto; width: 400px; border-radius: 10px; }
-        input { width: 90%; padding: 8px; margin: 5px; }
-        button { padding: 10px 20px; background: teal; color: white; border: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Crop Yield Prediction</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f4f0;
+      min-height: 100vh;
+      padding: 40px 16px;
+      color: #1a1a1a;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #0f6e56;
+      letter-spacing: -0.3px;
+    }
+    .header p {
+      font-size: 14px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin-bottom: 16px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #888;
+      margin-bottom: 14px;
+    }
+
+    /* ── Soil pills ── */
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill {
+      padding: 6px 16px;
+      border: 1.5px solid #c8e6c9;
+      border-radius: 99px;
+      font-size: 13px;
+      color: #2e7d52;
+      cursor: pointer;
+      background: #fff;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .pill:hover { background: #e8f5e9; }
+    .pill.active { background: #1d9e75; color: #fff; border-color: #1d9e75; }
+
+    /* ── Form grid ── */
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .full { grid-column: 1 / -1; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .field input {
+      padding: 10px 12px;
+      border: 1.5px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #1a1a1a;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    .field input:focus { border-color: #1d9e75; }
+
+    /* ── Submit button ── */
+    .btn-predict {
+      width: 100%;
+      padding: 13px;
+      background: #1d9e75;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.02em;
+      transition: background 0.15s;
+      margin-top: 4px;
+    }
+    .btn-predict:hover { background: #0f6e56; }
+    .btn-predict:active { transform: scale(0.99); }
+
+    /* ── Yield score banner ── */
+    .yield-banner {
+      background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+      border: 1.5px solid #a5d6a7;
+      border-radius: 12px;
+      padding: 18px 24px;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .yield-label { font-size: 14px; color: #2e7d52; font-weight: 500; }
+    .yield-value { font-size: 36px; font-weight: 700; color: #0f6e56; }
+    .yield-unit  { font-size: 14px; color: #2e7d52; }
+
+    /* ── Section heading ── */
+    .section-heading {
+      font-size: 13px;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 12px;
+    }
+
+    /* ── Crop cards ── */
+    .crop-card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+    }
+    .crop-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .crop-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .rank-badge {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 99px;
+      padding: 3px 10px;
+    }
+    .rank-1 { background: #e8f5e9; color: #085041; }
+    .rank-2 { background: #e3f2fd; color: #0c447c; }
+    .rank-3 { background: #fff8e1; color: #633806; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+    .stat-box {
+      background: #f7f9f7;
+      border-radius: 8px;
+      padding: 10px 8px;
+      text-align: center;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #888;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a1a1a;
+    }
+    .profit-pos { color: #0f6e56; }
+    .profit-neg { color: #c0392b; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .grid2 { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(3, 1fr); }
+      .stats-grid .stat-box:nth-child(4),
+      .stats-grid .stat-box:nth-child(5) { grid-column: span 1; }
+    }
+  </style>
 </head>
 <body>
+<div class="container">
 
-<div class="box">
-    <h2>Crop Yield Prediction</h2>
+  <!-- Header -->
+  <div class="header">
+    <h1>🌾 Crop Yield Prediction</h1>
+    <p>Enter your field conditions to get yield estimate and top crop suggestions</p>
+  </div>
 
-    <form method="POST">
-        <input name="soil_type" placeholder="Soil Type"><br>
-        <input name="moisture" placeholder="Soil Moisture"><br>
-        <input name="temperature" placeholder="Temperature"><br>
-        <input name="rainfall" placeholder="Rainfall"><br>
-        <input name="humidity" placeholder="Humidity"><br>
-        <input name="sunlight" placeholder="Sunlight"><br>
+  <!-- Form -->
+  <form method="POST" id="predForm">
 
-        <button type="submit">Predict</button>
-    </form>
-
-    {% if result %}
-        <h3>Yield: {{ result }} kg/hectare</h3>
-    {% endif %}
-
-    {% if crops %}
-        <h3>Top Suggested Crops:</h3>
-        {% for c in crops %}
-            <p>{{ c.crop_type }}</p>
+    <!-- Soil type -->
+    <div class="card">
+      <p class="card-title">Soil type</p>
+      <div class="pills">
+        {% set soil_types = ["Loamy","Sandy","Clay","Silty","Peaty"] %}
+        {% for s in soil_types %}
+          <button
+            type="button"
+            class="pill {% if form.get('soil','').lower() == s.lower() %}active{% elif loop.first and not form.get('soil') %}active{% endif %}"
+            data-val="{{ s.lower() }}"
+            onclick="selectSoil(this)">
+            {{ s }}
+          </button>
         {% endfor %}
+      </div>
+      <input type="hidden" name="soil" id="soilInput"
+             value="{{ form.get('soil', 'loamy') }}">
+    </div>
+
+    <!-- Field conditions -->
+    <div class="card">
+      <p class="card-title">Field conditions</p>
+      <div class="grid2">
+        <div class="field">
+          <label>Soil moisture (%)</label>
+          <input type="number" name="moisture" placeholder="e.g. 40"
+                 value="{{ form.get('moisture', '') }}" min="0" max="100" required>
+        </div>
+        <div class="field">
+          <label>Temperature (°C)</label>
+          <input type="number" name="temperature" placeholder="e.g. 28"
+                 value="{{ form.get('temperature', '') }}" required>
+        </div>
+        <div class="field">
+          <label>Rainfall (mm)</label>
+          <input type="number" name="rainfall" placeholder="e.g. 120"
+                 value="{{ form.get('rainfall', '') }}" min="0" required>
+        </div>
+        <div class="field">
+          <label>Humidity (%)</label>
+          <input type="number" name="humidity" placeholder="e.g. 65"
+                 value="{{ form.get('humidity', '') }}" min="0" max="100" required>
+        </div>
+        <div class="field full">
+          <label>Sunlight (hrs/day)</label>
+          <input type="number" name="sunlight" placeholder="e.g. 8"
+                 value="{{ form.get('sunlight', '') }}" min="0" max="24" required>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="btn-predict">Predict Yield &amp; Crops</button>
+  </form>
+
+  <!-- Results -->
+  {% if result is not none %}
+  <div style="margin-top: 28px;">
+
+    <!-- Yield score -->
+    <div class="yield-banner">
+      <span class="yield-label">Estimated yield</span>
+      <span class="yield-value">{{ "{:,.0f}".format(result) }}</span>
+      <span class="yield-unit">kg/hectare</span>
+    </div>
+
+    <!-- Top crops -->
+    {% if crops %}
+    <p class="section-heading">Top 3 suggested crops</p>
+
+    {% set badge_classes = ["rank-1","rank-2","rank-3"] %}
+    {% set badge_labels  = ["1st Pick","2nd Pick","3rd Pick"] %}
+
+    {% for c in crops %}
+    <div class="crop-card">
+      <div class="crop-header">
+        <span class="crop-name">{{ c.name }}</span>
+        <span class="rank-badge {{ badge_classes[loop.index0] }}">
+          {{ badge_labels[loop.index0] }}
+        </span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-label">Yield (kg/ha)</div>
+          <div class="stat-value">{{ "{:,.0f}".format(c.yield) }}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Price/kg (₹)</div>
+          <div class="stat-value">₹{{ c.price }}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Input cost (₹)</div>
+          <div class="stat-value">₹{{ "{:,.0f}".format(c.cost) }}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Revenue (₹)</div>
+          <div class="stat-value">₹{{ "{:,.0f}".format(c.revenue) }}</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Net profit (₹)</div>
+          <div class="stat-value {{ 'profit-pos' if c.profit >= 0 else 'profit-neg' }}">
+            {{ "+" if c.profit >= 0 else "" }}₹{{ "{:,.0f}".format(c.profit) }}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% else %}
+    <p style="color:#888; font-size:14px; margin-top:8px;">
+      No crop data found for the selected soil type. Try a different soil or check your Excel files.
+    </p>
     {% endif %}
+
+  </div>
+  {% endif %}
+
 </div>
 
+<script>
+  function selectSoil(el) {
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('soilInput').value = el.dataset.val;
+  }
+</script>
 </body>
 </html>
