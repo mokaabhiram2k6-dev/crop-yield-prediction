@@ -37,7 +37,7 @@ df2 = df2.rename(columns={
 })
 
 # =========================
-# MERGE
+# MERGE DATA
 # =========================
 df = pd.concat([df1, df2], ignore_index=True)
 
@@ -46,7 +46,7 @@ df = pd.concat([df1, df2], ignore_index=True)
 # =========================
 df = df.fillna(0)
 
-# ensure all features exist
+# ensure required columns exist
 features = ["soil_moisture", "temperature", "rainfall", "humidity", "sunlight"]
 
 for col in features:
@@ -83,11 +83,26 @@ def index():
             pred = model.predict([[moisture, temp, rain, humidity, sunlight]])[0]
 
             # =========================
-            # TOP 3 CROPS
+            # UNIQUE TOP 3 CROPS
             # =========================
-            similar = df.sort_values(by="yield", ascending=False).head(3)
+            filtered = df.copy()
 
-            crops = similar[["crop_type"]].to_dict(orient="records")
+            # optional: filter by soil type (safe check)
+            if "soil_type" in df.columns:
+                filtered = df[df["soil_type"].astype(str).str.lower() == soil_type.lower()]
+
+                if filtered.empty:
+                    filtered = df  # fallback
+
+            top = filtered.sort_values(by="yield", ascending=False)
+
+            # remove duplicate crops
+            top_unique = top.drop_duplicates(subset=["crop_type"])
+
+            # pick top 3
+            top3 = top_unique.head(3)
+
+            crops = top3[["crop_type"]].to_dict(orient="records")
 
             result = round(pred, 2)
 
