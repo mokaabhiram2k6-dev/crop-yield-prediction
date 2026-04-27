@@ -3,37 +3,70 @@
 <head>
     <title>Crop Yield Prediction</title>
     <style>
-        body { font-family: Arial; text-align: center; background: #f2f2f2; }
-        .box { background: white; padding: 20px; margin: 40px auto; width: 400px; border-radius: 10px; }
-        input { width: 90%; padding: 8px; margin: 5px; }
-        button { padding: 10px 20px; background: teal; color: white; border: none; }
+        body { font-family: Arial; background: #f2f2f2; }
+        .container {
+            width: 50%;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            margin-top: 50px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        input {
+            width: 90%;
+            padding: 10px;
+            margin: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background: teal;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #d9f2f2;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
 
-<div class="box">
+<div class="container">
     <h2>Crop Yield Prediction</h2>
 
     <form method="POST">
-        <input name="soil_type" placeholder="Soil Type"><br>
+        <input name="soil" placeholder="Soil Type"><br>
         <input name="moisture" placeholder="Soil Moisture"><br>
         <input name="temperature" placeholder="Temperature"><br>
         <input name="rainfall" placeholder="Rainfall"><br>
         <input name="humidity" placeholder="Humidity"><br>
         <input name="sunlight" placeholder="Sunlight"><br>
-
         <button type="submit">Predict</button>
     </form>
 
     {% if result %}
-        <h3>Yield: {{ result }} kg/hectare</h3>
+        <div class="box">
+            <h3>Yield: {{ result }} kg/hectare</h3>
+        </div>
     {% endif %}
 
     {% if crops %}
-        <h3>Top Suggested Crops:</h3>
-        {% for c in crops %}
-            <p>{{ c.crop_type }}</p>
-        {% endfor %}
+        <div class="box">
+            <h3>Top Suggested Crops:</h3>
+
+            {% for c in crops %}
+                <p><b>{{ c.name }}</b></p>
+                <p>Price: ₹{{ c.price }}/kg</p>
+                <p>Cost: ₹{{ c.cost }}</p>
+                <p>Revenue: ₹{{ c.revenue }}</p>
+                <p>Profit: ₹{{ c.profit }}</p>
+                <hr>
+            {% endfor %}
+        </div>
     {% endif %}
 </div>
 
