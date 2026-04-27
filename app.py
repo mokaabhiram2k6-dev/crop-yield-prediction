@@ -5,32 +5,63 @@ import os
 app = Flask(__name__)
 
 # =========================
+# SOIL TYPE NORMALISATION
+# Maps raw Excel soil names → pill values shown in the UI
+# =========================
+SOIL_NORMALISE = {
+    # data1.xlsx variants (greenhouse — loamy-family)
+    "loamy soil":              "loamy",
+    "sandy loam":              "sandy",
+    "well-drained loam":       "loamy",
+    "rich silty soil":         "silty",
+    "moist loamy soil":        "loamy",
+    "loose sandy loam":        "sandy",
+    "well-drained loamy soil": "loamy",
+    "rich well-drained soil":  "loamy",
+    # data2.xlsx variants
+    "red soils":                      "red",
+    "arid and desert soils":          "sandy",
+    "alluvial soils":                 "alluvial",
+    "laterite and lateritic soils":   "laterite",
+    "black soils":                    "black",
+    "saline and alkaline soils":      "sandy",
+    "peaty and marshy soils":         "peaty",
+    "forest and mountain soils":      "loamy",
+}
+
+# =========================
 # LOAD & MERGE DATA
 # =========================
 def load_data():
     frames = []
 
-    if os.path.exists("data1.xlsx"):
-        df1 = pd.read_excel("data1.xlsx")
+    # --- data1.xlsx  (greenhouse crops, yield in kg/m2 → convert to kg/ha) ---
+    p1 = "data1.xlsx"
+    if os.path.exists(p1):
+        df1 = pd.read_excel(p1)
         df1.columns = df1.columns.str.strip().str.lower()
         df1 = df1.rename(columns={
-            "avg_temp":          "temperature",
-            "humidity_r":        "humidity",
-            "yield_kg_per_m2":   "yield"
+            "avg_temperature_c": "temperature",
+            "humidity_percent":  "humidity",
+            "yield_kg_per_m2":   "yield_raw",
         })
-        frames.append(df1)
+        df1["yield"] = pd.to_numeric(df1["yield_raw"], errors="coerce") * 10000
+        frames.append(df1[["crop_type", "soil_type", "temperature", "humidity", "yield"]])
 
-    if os.path.exists("data2.xlsx"):
-        df2 = pd.read_excel("data2.xlsx")
+    # --- data2.xlsx  (field crops, yield already in kg/ha) ---
+    p2 = "data2.xlsx"
+    if os.path.exists(p2):
+        df2 = pd.read_excel(p2)
         df2.columns = df2.columns.str.strip().str.lower()
         df2 = df2.rename(columns={
             "temperature_c":       "temperature",
             "humidity_%":          "humidity",
-            "yield_kg_per_hectare":"yield"
+            "yield_kg_per_hectare":"yield",
         })
-        frames.append(df2)
+        frames.append(df2[["crop_type", "soil_type", "temperature", "humidity", "yield"]])
 
     if not frames:
+        # Fallback sample data when Excel files are missing
         data = {
             "soil_type":  ["loamy","loamy","loamy","sandy","sandy","clay","clay","silty","peaty","loamy",
                            "sandy","clay","loamy","sandy","loamy","clay","loamy","silty","loamy","sandy",
@@ -51,27 +82,36 @@ def load_data():
         return pd.DataFrame(data)
 
     df = pd.concat(frames, ignore_index=True)
-    needed = ["soil_type", "temperature", "humidity", "yield", "crop_type"]
-    existing = [c for c in needed if c in df.columns]
-    df = df[existing].dropna()
     df["yield"] = pd.to_numeric(df["yield"], errors="coerce")
-    df = df.dropna()
+    df = df.dropna(subset=["crop_type", "soil_type", "yield"])
+
+    # Normalise soil_type to match UI pill values
+    df["soil_type"] = (df["soil_type"]
+                       .astype(str)
+                       .str.strip()
+                       .str.lower()
+                       .map(SOIL_NORMALISE)
+                       .fillna("loamy"))
     return df
 
 df = load_data()
 
-# Crop prices and costs (Rs.)
+# Crop prices and costs (Rs. per kg / per hectare)
 PRICES = {
     "Rice":22, "Wheat":20, "Maize":18, "Cotton":55, "Sugarcane":3,
     "Soybean":35, "Groundnut":48, "Turmeric":80, "Tomato":25,
     "Onion":15, "Banana":20, "Jowar":18, "Bajra":17, "Ragi":22,
-    "Chili":90, "Garlic":60, "Mustard":45, "Cashew":120
+    "Chili":90, "Garlic":60, "Mustard":45, "Cashew":120,
+    "Cucumber":18, "Pepper":60, "Lettuce":30, "Spinach":25,
+    "Radish":12, "Beans":40, "Basil":100,
 }
 COSTS = {
     "Rice":25000, "Wheat":22000, "Maize":20000, "Cotton":35000, "Sugarcane":30000,
     "Soybean":20000, "Groundnut":24000, "Turmeric":40000, "Tomato":30000,
     "Onion":22000, "Banana":28000, "Jowar":15000, "Bajra":14000, "Ragi":16000,
-    "Chili":38000, "Garlic":32000, "Mustard":18000, "Cashew":22000
+    "Chili":38000, "Garlic":32000, "Mustard":18000, "Cashew":22000,
+    "Cucumber":25000, "Pepper":35000, "Lettuce":20000, "Spinach":18000,
+    "Radish":12000, "Beans":22000, "Basil":15000,
 }
 DEFAULT_PRICE = 50
 DEFAULT_COST  = 25000
@@ -119,26 +159,27 @@ def index():
                 "rainfall": rainfall, "humidity": humidity, "sunlight": sunlight
             }
 
-            # Suitability score (not a direct yield prediction)
+            # Suitability score
             result = round((moisture * 10) + (temp * 20) + (rainfall * 5) +
                            (humidity * 8) + (sunlight * 15), 2)
 
-            # Filter by soil type; fallback to full dataset if < 3 results
+            # Filter by normalised soil type; fallback to full dataset if < 3 rows
             filtered = df.copy()
-            if soil and "soil_type" in df.columns:
-                soil_match = df[df["soil_type"].astype(str).str.lower() == soil.lower()]
+            if soil:
+                soil_match = df[df["soil_type"] == soil.lower()]
                 if len(soil_match) >= 3:
                     filtered = soil_match
 
-            # Best yield per unique crop
+            # Best average yield per unique crop
             best = (filtered
+                    .groupby("crop_type", as_index=False)["yield"]
+                    .mean()
                     .sort_values("yield", ascending=False)
-                    .drop_duplicates(subset=["crop_type"])
                     .head(3))
 
             for _, row in best.iterrows():
-                name      = str(row.get("crop_type", "Unknown")).strip()
-                yield_val = float(row.get("yield", 0))
+                name      = str(row["crop_type"]).strip()
+                yield_val = float(row["yield"])
                 price     = PRICES.get(name, DEFAULT_PRICE)
                 cost      = COSTS.get(name, DEFAULT_COST)
                 revenue   = round(yield_val * price, 2)
@@ -149,7 +190,7 @@ def index():
                     "price":   price,
                     "cost":    cost,
                     "revenue": revenue,
-                    "profit":  profit
+                    "profit":  profit,
                 })
 
         except ValueError as e:
