@@ -42,7 +42,7 @@
     <h2>Crop Yield Prediction System</h2>
 
     <form method="POST">
-        <input name="soil" placeholder="Soil Type (e.g., redsoil)" required><br>
+        <input name="soil" placeholder="Soil Type" required><br>
         <input name="moisture" placeholder="Moisture (%)" required><br>
         <input name="temp" placeholder="Temperature (°C)" required><br>
         <input name="rainfall" placeholder="Rainfall (mm)" required><br>
@@ -55,7 +55,15 @@
     {% if prediction %}
     <div class="card">
         <h3>Yield: {{prediction}} kg/hectare</h3>
-        <p>Crop: {{selected_crop}}</p>
+
+        <h4>Suggested Crops:</h4>
+        <ul>
+            {% for crop in suggested_crops %}
+                <li>{{crop}}</li>
+            {% endfor %}
+        </ul>
+
+        <p><b>Selected Crop (for calculation):</b> {{selected_crop}}</p>
         <p>Price: ₹{{price}} /kg</p>
         <p>Cost: ₹{{cost}}</p>
         <p>Revenue: ₹{{revenue}}</p>
@@ -64,6 +72,9 @@
     {% endif %}
 
 </div>
+
+</body>
+</html>
 
 </body>
 </html>
