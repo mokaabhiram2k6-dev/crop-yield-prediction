@@ -1,30 +1,31 @@
 from flask import Flask, render_template, request
 import pandas as pd
-from difflib import get_close_matches
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.ensemble import RandomForestRegressor
 
 app = Flask(__name__)
 
-# Load dataset
-df = pd.read_excel("data.xlsx")
+# =========================
+# LOAD BOTH FILES
+# =========================
+df1 = pd.read_excel("data1.xlsx", engine="openpyxl")
+df2 = pd.read_excel("data2.xlsx", engine="openpyxl")
+
+# COMBINE
+df = pd.concat([df1, df2], ignore_index=True)
+
+# CLEAN COLUMN NAMES
 df.columns = df.columns.str.strip().str.lower()
 
-def clean_text(text):
-    return str(text).lower().replace(" ", "").replace("_", "")
-
-# Clean soil
-original_soils = df["soil_type"].unique()
-cleaned_soils = [clean_text(s) for s in original_soils]
-df["soil_type"] = df["soil_type"].apply(clean_text)
-
-# Features
+# =========================
+# FEATURES
+# =========================
 features = [
     "soil_type",
-    "soil_moisture_%", 
+    "soil_moisture_%",
     "temperature_c",
     "rainfall_mm",
-    "humidity_%", 
+    "humidity_%",
     "sunlight_hours"
 ]
 
@@ -33,45 +34,51 @@ target = "yield_kg_per_hectare"
 X = df[features].copy()
 y = df[target]
 
-# Encode
+# =========================
+# ENCODING
+# =========================
 le = LabelEncoder()
 X["soil_type"] = le.fit_transform(X["soil_type"])
 
-# Scale
+# =========================
+# SCALING
+# =========================
 scaler = MinMaxScaler()
+
 num_cols = [
-    "soil_moisture_%", 
+    "soil_moisture_%",
     "temperature_c",
     "rainfall_mm",
-    "humidity_%", 
+    "humidity_%",
     "sunlight_hours"
 ]
 
 X[num_cols] = scaler.fit_transform(X[num_cols])
 
-# Model
+# =========================
+# MODEL
+# =========================
 model = RandomForestRegressor(n_estimators=100, random_state=42)
 model.fit(X, y)
 
-# Prices & Costs
+# =========================
+# PRICE & COST
+# =========================
 crop_prices = {
     "Rice": 20,
     "Wheat": 22,
-    "Maize": 17,
-    "Groundnut": 60,
-    "Millets": 24,
-    "Sugarcane": 20
+    "Maize": 17
 }
 
 crop_costs = {
     "Rice": 30000,
     "Wheat": 25000,
-    "Maize": 22000,
-    "Groundnut": 28000,
-    "Millets": 20000,
-    "Sugarcane": 35000
+    "Maize": 22000
 }
 
+# =========================
+# ROUTE
+# =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
     prediction = None
@@ -80,37 +87,24 @@ def index():
     cost = None
     revenue = None
     profit = None
-    avg_yield = round(df[target].mean(), 2)
 
     if request.method == "POST":
         try:
-            file = request.files.get("file")
+            soil = request.form["soil"].lower()
+            moisture = float(request.form["moisture"])
+            temp = float(request.form["temp"])
+            rainfall = float(request.form["rainfall"])
+            humidity = float(request.form["humidity"])
+            sunlight = float(request.form["sunlight"])
 
-            if file and file.filename.endswith(".csv"):
-                df_csv = pd.read_csv(file)
-                latest = df_csv.iloc[-1]
-
-                soil_input = latest["soil_type"]
-                moisture = float(latest["soil_moisture_%"])
-                temp = float(latest["temperature_c"])
-                rainfall = float(latest["rainfall_mm"])
-                humidity = float(latest["humidity_%"])
-                sunlight = float(latest["sunlight_hours"])
-
+            # SAFE ENCODE
+            if soil in le.classes_:
+                soil_encoded = le.transform([soil])[0]
             else:
-                soil_input = request.form.get("soil", "")
-                moisture = float(request.form.get("moisture", 0))
-                temp = float(request.form.get("temp", 0))
-                rainfall = float(request.form.get("rainfall", 0))
-                humidity = float(request.form.get("humidity", 0))
-                sunlight = float(request.form.get("sunlight", 0))
-
-            cleaned_input = clean_text(soil_input)
-            match = get_close_matches(cleaned_input, cleaned_soils, n=1, cutoff=0.5)
-            soil_type = match[0] if match else cleaned_input
+                soil_encoded = 0
 
             user_data = pd.DataFrame([{
-                "soil_type": soil_type,
+                "soil_type": soil_encoded,
                 "soil_moisture_%": moisture,
                 "temperature_c": temp,
                 "rainfall_mm": rainfall,
@@ -118,33 +112,26 @@ def index():
                 "sunlight_hours": sunlight
             }])
 
-            # Safe encoding
-            try:
-                user_data["soil_type"] = le.transform(user_data["soil_type"])
-            except:
-                user_data["soil_type"] = 0
-
-            # Safe scaling
             user_data[num_cols] = scaler.transform(user_data[num_cols])
 
-            prediction = round(model.predict(user_data)[0], 2)
+            prediction = round(model.predict(user_data)[0])
 
-            # Crop logic
-            if "red" in soil_type:
-                selected_crop = "Groundnut"
-            elif "clay" in soil_type:
+            # CROP LOGIC
+            if moisture > 50:
                 selected_crop = "Rice"
+            elif temp > 30:
+                selected_crop = "Maize"
             else:
                 selected_crop = "Wheat"
 
-            price = crop_prices.get(selected_crop, 20)
-            cost = crop_costs.get(selected_crop, 25000)
+            price = crop_prices[selected_crop]
+            cost = crop_costs[selected_crop]
 
             revenue = prediction * price
             profit = revenue - cost
 
         except Exception as e:
-            print("ERROR:", e)
+            print(e)
             prediction = "Error"
 
     return render_template(
@@ -154,8 +141,7 @@ def index():
         price=price,
         cost=cost,
         revenue=revenue,
-        profit=profit,
-        avg_yield=avg_yield
+        profit=profit
     )
 
 if __name__ == "__main__":
