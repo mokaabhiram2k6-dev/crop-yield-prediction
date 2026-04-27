@@ -6,15 +6,12 @@ from sklearn.ensemble import RandomForestRegressor
 app = Flask(__name__)
 
 # =========================
-# LOAD BOTH FILES
+# LOAD DATA
 # =========================
 df1 = pd.read_excel("data1.xlsx", engine="openpyxl")
 df2 = pd.read_excel("data2.xlsx", engine="openpyxl")
 
-# COMBINE
 df = pd.concat([df1, df2], ignore_index=True)
-
-# CLEAN COLUMN NAMES
 df.columns = df.columns.str.strip().str.lower()
 
 # =========================
@@ -67,13 +64,19 @@ model.fit(X, y)
 crop_prices = {
     "Rice": 20,
     "Wheat": 22,
-    "Maize": 17
+    "Maize": 17,
+    "Groundnut": 60,
+    "Millets": 24,
+    "Sugarcane": 20
 }
 
 crop_costs = {
     "Rice": 30000,
     "Wheat": 25000,
-    "Maize": 22000
+    "Maize": 22000,
+    "Groundnut": 28000,
+    "Millets": 20000,
+    "Sugarcane": 35000
 }
 
 # =========================
@@ -82,6 +85,7 @@ crop_costs = {
 @app.route("/", methods=["GET", "POST"])
 def index():
     prediction = None
+    suggested_crops = []
     selected_crop = None
     price = None
     cost = None
@@ -97,7 +101,7 @@ def index():
             humidity = float(request.form["humidity"])
             sunlight = float(request.form["sunlight"])
 
-            # SAFE ENCODE
+            # SAFE ENCODING
             if soil in le.classes_:
                 soil_encoded = le.transform([soil])[0]
             else:
@@ -116,16 +120,21 @@ def index():
 
             prediction = round(model.predict(user_data)[0])
 
-            # CROP LOGIC
+            # =========================
+            # MULTI CROP LOGIC
+            # =========================
             if moisture > 50:
-                selected_crop = "Rice"
+                suggested_crops = ["Rice", "Sugarcane", "Millets"]
             elif temp > 30:
-                selected_crop = "Maize"
+                suggested_crops = ["Maize", "Groundnut", "Millets"]
             else:
-                selected_crop = "Wheat"
+                suggested_crops = ["Wheat", "Maize", "Rice"]
 
-            price = crop_prices[selected_crop]
-            cost = crop_costs[selected_crop]
+            # FIRST crop for calculation
+            selected_crop = suggested_crops[0]
+
+            price = crop_prices.get(selected_crop, 20)
+            cost = crop_costs.get(selected_crop, 25000)
 
             revenue = prediction * price
             profit = revenue - cost
@@ -137,6 +146,7 @@ def index():
     return render_template(
         "index.html",
         prediction=prediction,
+        suggested_crops=suggested_crops,
         selected_crop=selected_crop,
         price=price,
         cost=cost,
