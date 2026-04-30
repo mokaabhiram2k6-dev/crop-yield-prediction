@@ -96,6 +96,36 @@
     }
     .field input:focus { border-color: #1d9e75; }
 
+    /* pH hint */
+    .hint {
+      font-size: 10px;
+      color: #aaa;
+      margin-top: -2px;
+    }
+
+    /* pH colour bar */
+    .ph-bar {
+      height: 6px;
+      border-radius: 99px;
+      margin-top: 5px;
+      background: linear-gradient(to right,
+        #e53935 0%,
+        #fb8c00 20%,
+        #fdd835 35%,
+        #66bb6a 50%,
+        #29b6f6 65%,
+        #5c6bc0 80%,
+        #7b1fa2 100%
+      );
+    }
+    .ph-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
     /* Submit button */
     .btn-predict {
       width: 100%;
@@ -187,7 +217,6 @@
     .rank-2 { background: #e3f2fd; color: #0c447c; }
     .rank-3 { background: #fff8e1; color: #633806; }
 
-    /* RF confidence badge */
     .confidence-badge {
       font-size: 11px;
       font-weight: 700;
@@ -226,7 +255,6 @@
     .profit-pos { color: #0f6e56; }
     .profit-neg { color: #c0392b; }
 
-    /* RF model info note */
     .model-note {
       font-size: 11px;
       color: #888;
@@ -235,7 +263,6 @@
       margin-bottom: 2px;
     }
 
-    /* Responsive */
     @media (max-width: 480px) {
       .grid2 { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
@@ -246,13 +273,11 @@
 <body>
 <div class="container">
 
-  <!-- Header -->
   <div class="header">
     <h1>🌾 Crop Yield Prediction</h1>
     <p>Enter your field conditions to get a suitability score and top crop suggestions</p>
   </div>
 
-  <!-- Form -->
   <form method="POST" id="predForm">
 
     <!-- Soil type -->
@@ -298,27 +323,39 @@
           <input type="number" name="humidity" placeholder="e.g. 65"
                  value="{{ form.get('humidity', '') }}" min="0" max="100" step="0.1" required>
         </div>
-        <div class="field full">
+        <div class="field">
           <label>Sunlight (hrs/day)</label>
           <input type="number" name="sunlight" placeholder="e.g. 8"
                  value="{{ form.get('sunlight', '') }}" min="0" max="24" step="0.1" required>
         </div>
+
+        <!-- ✅ pH field -->
+        <div class="field">
+          <label>Soil pH (0–14)</label>
+          <input type="number" name="ph" id="phInput" placeholder="e.g. 6.5"
+                 value="{{ form.get('ph', '') }}" min="0" max="14" step="0.1" required>
+          <span class="hint">Ideal for most crops: 6.0 – 7.0</span>
+          <div class="ph-bar"></div>
+          <div class="ph-labels">
+            <span>0 Acidic</span>
+            <span>7 Neutral</span>
+            <span>14 Alkaline</span>
+          </div>
+        </div>
+
       </div>
     </div>
 
     <button type="submit" class="btn-predict">Predict Yield &amp; Crops</button>
   </form>
 
-  <!-- Error -->
   {% if error %}
   <div class="error-banner">⚠️ {{ error }}</div>
   {% endif %}
 
-  <!-- Results -->
   {% if result is not none %}
   <div style="margin-top: 28px;">
 
-    <!-- Suitability score -->
     <div class="yield-banner">
       <div class="yield-banner-row">
         <span class="yield-label">Suitability score</span>
@@ -328,10 +365,8 @@
       <div class="yield-note">Higher score = better growing conditions based on your inputs</div>
     </div>
 
-    <!-- Top crops -->
     {% if crops %}
 
-    <!-- Show model note only when RF confidence is available -->
     {% if crops[0].confidence is not none %}
     <p class="model-note">🤖 Predictions powered by Random Forest ML model</p>
     {% endif %}
