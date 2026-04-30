@@ -51,7 +51,9 @@ def load_data():
             "yield_kg_per_m2":   "yield_raw",
         })
         df1["yield"] = pd.to_numeric(df1["yield_raw"], errors="coerce") * 10000
-        frames.append(df1[["crop_type", "soil_type", "temperature", "humidity", "yield"]])
+        if "ph" not in df1.columns:
+            df1["ph"] = 6.5
+        frames.append(df1[["crop_type", "soil_type", "temperature", "humidity", "ph", "yield"]])
 
     p2 = "data2.xlsx"
     if os.path.exists(p2):
@@ -62,7 +64,9 @@ def load_data():
             "humidity_%":           "humidity",
             "yield_kg_per_hectare": "yield",
         })
-        frames.append(df2[["crop_type", "soil_type", "temperature", "humidity", "yield"]])
+        if "ph" not in df2.columns:
+            df2["ph"] = 6.5
+        frames.append(df2[["crop_type", "soil_type", "temperature", "humidity", "ph", "yield"]])
 
     if not frames:
         data = {
@@ -78,6 +82,9 @@ def load_data():
             "humidity":   [75,60,65,40,35,50,70,68,80,72,
                            38,55,70,60,75,50,80,65,62,58,
                            45,48,60,55,75,65,70,65],
+            "ph":         [6.0,6.5,6.2,6.0,7.0,7.5,5.5,6.5,6.0,6.5,
+                           7.0,6.0,6.5,6.0,5.5,6.5,6.0,6.2,6.0,6.5,
+                           6.0,7.5,7.0,7.5,6.5,6.5,5.5,5.5],
             "yield":      [4200,3600,5100,2700,2600,2500,2400,2900,8100,7200,
                            2600,3800,6800,3500,3300,2500,7400,4700,3000,2800,
                            2800,2600,3100,2900,4500,3700,2300,2100]
@@ -86,6 +93,7 @@ def load_data():
 
     df = pd.concat(frames, ignore_index=True)
     df["yield"] = pd.to_numeric(df["yield"], errors="coerce")
+    df["ph"]    = pd.to_numeric(df["ph"],    errors="coerce").fillna(6.5)
     df = df.dropna(subset=["crop_type", "soil_type", "yield"])
     df["soil_type"] = (df["soil_type"]
                        .astype(str)
@@ -98,13 +106,9 @@ def load_data():
 
 # =========================
 # IQR OUTLIER REMOVAL
+# ph is now included in outlier check
 # =========================
-def remove_outliers_iqr(df, columns=("temperature", "humidity", "yield")):
-    """
-    Removes outliers per crop group using the IQR method.
-    Each crop's natural range is respected independently.
-    Rows outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR] are dropped.
-    """
+def remove_outliers_iqr(df, columns=("temperature", "humidity", "ph", "yield")):
     original_len = len(df)
     clean_frames = []
 
@@ -130,19 +134,13 @@ def remove_outliers_iqr(df, columns=("temperature", "humidity", "yield")):
 
 # =========================
 # TRAIN RANDOM FOREST MODEL
+# Features: soil_num, temperature, humidity, ph  ← ph added
 # =========================
 def train_model(df):
-    """
-    Trains a RandomForestClassifier.
-    Features : soil_num, temperature, humidity
-    Target   : crop_type
-    Returns  : (model, label_encoder) or (None, None) on failure.
-    """
     try:
         df = df.copy()
         df["soil_num"] = df["soil_type"].map(SOIL_NUMERIC).fillna(0).astype(int)
 
-        # Keep crops with at least 2 samples
         crop_counts = df["crop_type"].value_counts()
         valid_crops = crop_counts[crop_counts >= 2].index
         df = df[df["crop_type"].isin(valid_crops)]
@@ -151,13 +149,12 @@ def train_model(df):
             print("[RF] Not enough data to train model.")
             return None, None
 
-        X = df[["soil_num", "temperature", "humidity"]].values
+        X = df[["soil_num", "temperature", "humidity", "ph"]].values
         y = df["crop_type"].values
 
         le = LabelEncoder()
         y_enc = le.fit_transform(y)
 
-        # Stratify only when possible
         unique_classes = len(np.unique(y_enc))
         stratify = y_enc if unique_classes <= len(y_enc) // 2 else None
 
@@ -188,23 +185,21 @@ def train_model(df):
 # =========================
 # STARTUP: load → clean → train
 # =========================
-raw_df           = load_data()
-clean_df         = remove_outliers_iqr(raw_df)
+raw_df              = load_data()
+clean_df            = remove_outliers_iqr(raw_df)
 rf_model, label_enc = train_model(clean_df)
 
 
 # =========================
 # PREDICT WITH RANDOM FOREST
+# ph is now passed as a feature
 # =========================
-def rf_predict(soil_type, temperature, humidity, top_n=3):
-    """
-    Returns top-N predicted crops with confidence percentages.
-    """
+def rf_predict(soil_type, temperature, humidity, ph, top_n=3):
     if rf_model is None or label_enc is None:
         return []
 
     soil_num = SOIL_NUMERIC.get(soil_type.lower(), 0)
-    X_input  = np.array([[soil_num, temperature, humidity]])
+    X_input  = np.array([[soil_num, temperature, humidity, ph]])
     proba    = rf_model.predict_proba(X_input)[0]
 
     pairs = sorted(
@@ -243,6 +238,7 @@ BOUNDS = {
     "rainfall":    (0, 5000),
     "humidity":    (0, 100),
     "sunlight":    (0, 24),
+    "ph":          (0, 14),
 }
 
 
@@ -264,41 +260,45 @@ def index():
             rainfall = float(request.form.get("rainfall", 0))
             humidity = float(request.form.get("humidity", 0))
             sunlight = float(request.form.get("sunlight", 0))
+            ph       = float(request.form.get("ph", 7.0))
 
             # Server-side validation
             fields = {
                 "moisture": moisture, "temperature": temp,
-                "rainfall": rainfall, "humidity": humidity, "sunlight": sunlight
+                "rainfall": rainfall, "humidity": humidity,
+                "sunlight": sunlight, "ph": ph,
             }
             for field, val in fields.items():
                 lo, hi = BOUNDS[field]
                 if not (lo <= val <= hi):
-                    raise ValueError(f"{field.capitalize()} must be between {lo} and {hi}.")
+                    raise ValueError(f"{field.upper()} must be between {lo} and {hi}.")
 
             form = {
                 "soil": soil, "moisture": moisture, "temperature": temp,
-                "rainfall": rainfall, "humidity": humidity, "sunlight": sunlight
+                "rainfall": rainfall, "humidity": humidity,
+                "sunlight": sunlight, "ph": ph,
             }
 
             # Suitability score
-            result = round((moisture * 10) + (temp * 20) + (rainfall * 5) +
-                           (humidity * 8) + (sunlight * 15), 2)
+            # pH contributes up to 10 pts; ideal is 6.5, penalty grows as pH drifts away
+            ph_score = max(0, 10 - abs(ph - 6.5) * 20)
+            result = round(
+                (moisture * 10) + (temp * 20) + (rainfall * 5) +
+                (humidity * 8) + (sunlight * 15) + ph_score,
+                2
+            )
 
-            # -----------------------------------------------
-            # STEP 1: Random Forest prediction (primary path)
-            # -----------------------------------------------
-            rf_results = rf_predict(soil, temp, humidity, top_n=3)
+            # STEP 1: Random Forest prediction
+            rf_results = rf_predict(soil, temp, humidity, ph, top_n=3)
 
             if rf_results:
                 for crop_name, confidence in rf_results:
                     crop_rows = clean_df[clean_df["crop_type"] == crop_name]
                     yield_val = float(crop_rows["yield"].mean()) if len(crop_rows) > 0 else 3000.0
-
                     price   = PRICES.get(crop_name, DEFAULT_PRICE)
                     cost    = COSTS.get(crop_name, DEFAULT_COST)
                     revenue = round(yield_val * price, 2)
                     profit  = round(revenue - cost, 2)
-
                     crops.append({
                         "name":       crop_name,
                         "yield":      round(yield_val, 2),
@@ -310,9 +310,7 @@ def index():
                     })
 
             else:
-                # -----------------------------------------------
                 # STEP 2: Fallback — yield-based ranking
-                # -----------------------------------------------
                 filtered = clean_df.copy()
                 if soil:
                     soil_match = clean_df[clean_df["soil_type"] == soil.lower()]
