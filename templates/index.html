@@ -16,7 +16,7 @@
     }
 
     .container {
-      max-width: 640px;
+      max-width: 680px;
       margin: 0 auto;
     }
 
@@ -70,13 +70,32 @@
     .pill:hover { background: #e8f5e9; }
     .pill.active { background: #1d9e75; color: #fff; border-color: #1d9e75; }
 
+    /* Section divider inside card */
+    .section-divider {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #aaa;
+      margin: 18px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-divider::before,
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e8e8e8;
+    }
+
     /* Form grid */
     .grid2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 14px;
     }
-    .full { grid-column: 1 / -1; }
     .field { display: flex; flex-direction: column; gap: 6px; }
     .field label {
       font-size: 12px;
@@ -96,7 +115,23 @@
     }
     .field input:focus { border-color: #1d9e75; }
 
-    /* pH hint */
+    /* New field highlight */
+    .field.new-field input { border-color: #a5d6a7; background: #f0faf5; }
+    .field.new-field label { color: #0f6e56; }
+    .new-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      background: #1d9e75;
+      color: #fff;
+      border-radius: 4px;
+      padding: 1px 5px;
+      margin-left: 5px;
+      vertical-align: middle;
+      letter-spacing: 0.04em;
+    }
+
+    /* hint */
     .hint {
       font-size: 10px;
       color: #aaa;
@@ -109,13 +144,8 @@
       border-radius: 99px;
       margin-top: 5px;
       background: linear-gradient(to right,
-        #e53935 0%,
-        #fb8c00 20%,
-        #fdd835 35%,
-        #66bb6a 50%,
-        #29b6f6 65%,
-        #5c6bc0 80%,
-        #7b1fa2 100%
+        #e53935 0%, #fb8c00 20%, #fdd835 35%,
+        #66bb6a 50%, #29b6f6 65%, #5c6bc0 80%, #7b1fa2 100%
       );
     }
     .ph-labels {
@@ -155,7 +185,7 @@
       margin-top: 16px;
     }
 
-    /* Yield score banner */
+    /* Score banner */
     .yield-banner {
       background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
       border: 1.5px solid #a5d6a7;
@@ -171,7 +201,31 @@
     .yield-label { font-size: 14px; color: #2e7d52; font-weight: 500; }
     .yield-value { font-size: 36px; font-weight: 700; color: #0f6e56; }
     .yield-unit  { font-size: 14px; color: #2e7d52; }
-    .yield-note  { font-size: 11px; color: #4caf50; margin-top: 4px; }
+
+    /* Score bar */
+    .score-bar-wrap {
+      margin-top: 10px;
+    }
+    .score-bar-bg {
+      background: #b2dfdb;
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(to right, #1d9e75, #0f6e56);
+      transition: width 0.5s ease;
+    }
+    .score-bar-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #81c784;
+      margin-top: 3px;
+    }
+    .yield-note  { font-size: 11px; color: #4caf50; margin-top: 6px; }
 
     /* Section heading */
     .section-heading {
@@ -202,11 +256,7 @@
       font-weight: 700;
       color: #1a1a1a;
     }
-    .crop-badges {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
+    .crop-badges { display: flex; gap: 6px; align-items: center; }
     .rank-badge {
       font-size: 11px;
       font-weight: 700;
@@ -295,28 +345,19 @@
           </button>
         {% endfor %}
       </div>
-      <input type="hidden" name="soil" id="soilInput"
-             value="{{ form.get('soil', 'loamy') }}">
+      <input type="hidden" name="soil" id="soilInput" value="{{ form.get('soil', 'loamy') }}">
     </div>
 
     <!-- Field conditions -->
     <div class="card">
       <p class="card-title">Field conditions</p>
+
+      <div class="section-divider">Air &amp; Weather</div>
       <div class="grid2">
-        <div class="field">
-          <label>Soil moisture (%)</label>
-          <input type="number" name="moisture" placeholder="e.g. 40"
-                 value="{{ form.get('moisture', '') }}" min="0" max="100" step="0.1" required>
-        </div>
         <div class="field">
           <label>Temperature (°C)</label>
           <input type="number" name="temperature" placeholder="e.g. 28"
                  value="{{ form.get('temperature', '') }}" min="-10" max="60" step="0.1" required>
-        </div>
-        <div class="field">
-          <label>Rainfall (mm)</label>
-          <input type="number" name="rainfall" placeholder="e.g. 120"
-                 value="{{ form.get('rainfall', '') }}" min="0" max="5000" step="0.1" required>
         </div>
         <div class="field">
           <label>Humidity (%)</label>
@@ -324,12 +365,31 @@
                  value="{{ form.get('humidity', '') }}" min="0" max="100" step="0.1" required>
         </div>
         <div class="field">
+          <label>Rainfall (mm)</label>
+          <input type="number" name="rainfall" placeholder="e.g. 800"
+                 value="{{ form.get('rainfall', '') }}" min="0" max="5000" step="0.1" required>
+        </div>
+        <div class="field">
           <label>Sunlight (hrs/day)</label>
           <input type="number" name="sunlight" placeholder="e.g. 8"
                  value="{{ form.get('sunlight', '') }}" min="0" max="24" step="0.1" required>
         </div>
+      </div>
 
-        <!-- ✅ pH field -->
+      <div class="section-divider">Soil Conditions <span class="new-badge">UPDATED</span></div>
+      <div class="grid2">
+        <div class="field new-field">
+          <label>Soil Moisture (%)<span class="new-badge">NEW</span></label>
+          <input type="number" name="soil_moisture" placeholder="e.g. 65"
+                 value="{{ form.get('soil_moisture', '') }}" min="0" max="100" step="0.1" required>
+          <span class="hint">Optimal for most crops: 55–75%</span>
+        </div>
+        <div class="field new-field">
+          <label>Soil Temperature (°C)<span class="new-badge">NEW</span></label>
+          <input type="number" name="soil_temperature" placeholder="e.g. 22"
+                 value="{{ form.get('soil_temperature', '') }}" min="-5" max="50" step="0.1" required>
+          <span class="hint">Usually 1–3°C below air temp</span>
+        </div>
         <div class="field">
           <label>Soil pH (0–14)</label>
           <input type="number" name="ph" id="phInput" placeholder="e.g. 6.5"
@@ -337,12 +397,9 @@
           <span class="hint">Ideal for most crops: 6.0 – 7.0</span>
           <div class="ph-bar"></div>
           <div class="ph-labels">
-            <span>0 Acidic</span>
-            <span>7 Neutral</span>
-            <span>14 Alkaline</span>
+            <span>0 Acidic</span><span>7 Neutral</span><span>14 Alkaline</span>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -360,15 +417,31 @@
       <div class="yield-banner-row">
         <span class="yield-label">Suitability score</span>
         <span class="yield-value">{{ "{:,.0f}".format(result) }}</span>
-        <span class="yield-unit">pts</span>
+        <span class="yield-unit">/ 700 pts</span>
       </div>
-      <div class="yield-note">Higher score = better growing conditions based on your inputs</div>
+      <div class="score-bar-wrap">
+        <div class="score-bar-bg">
+          <div class="score-bar-fill" style="width: {{ [(result / 700 * 100), 100] | min | round(1) }}%"></div>
+        </div>
+        <div class="score-bar-labels">
+          <span>Poor</span><span>Fair</span><span>Good</span><span>Excellent</span>
+        </div>
+      </div>
+      <div class="yield-note">
+        {% set pct = (result / 700 * 100) | round(0) | int %}
+        {% if pct >= 80 %}🌟 Excellent growing conditions!
+        {% elif pct >= 60 %}✅ Good conditions — most crops will thrive.
+        {% elif pct >= 40 %}⚠️ Fair — consider improving soil moisture or pH.
+        {% else %}❌ Poor — significant adjustments recommended.
+        {% endif %}
+        ({{ pct }}% of optimal)
+      </div>
     </div>
 
     {% if crops %}
 
     {% if crops[0].confidence is not none %}
-    <p class="model-note">🤖 Predictions powered by Random Forest ML model</p>
+    <p class="model-note">🤖 Predictions powered by Random Forest ML model (6 features)</p>
     {% endif %}
 
     <p class="section-heading">Top 3 suggested crops</p>
