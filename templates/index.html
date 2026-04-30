@@ -172,6 +172,11 @@
       font-weight: 700;
       color: #1a1a1a;
     }
+    .crop-badges {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
     .rank-badge {
       font-size: 11px;
       font-weight: 700;
@@ -181,6 +186,18 @@
     .rank-1 { background: #e8f5e9; color: #085041; }
     .rank-2 { background: #e3f2fd; color: #0c447c; }
     .rank-3 { background: #fff8e1; color: #633806; }
+
+    /* RF confidence badge */
+    .confidence-badge {
+      font-size: 11px;
+      font-weight: 700;
+      background: #f0faf5;
+      color: #0f6e56;
+      border: 1.5px solid #a5d6a7;
+      border-radius: 99px;
+      padding: 3px 10px;
+      white-space: nowrap;
+    }
 
     .stats-grid {
       display: grid;
@@ -209,10 +226,20 @@
     .profit-pos { color: #0f6e56; }
     .profit-neg { color: #c0392b; }
 
+    /* RF model info note */
+    .model-note {
+      font-size: 11px;
+      color: #888;
+      text-align: center;
+      margin-top: 6px;
+      margin-bottom: 2px;
+    }
+
     /* Responsive */
     @media (max-width: 480px) {
       .grid2 { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
+      .crop-header { flex-direction: column; align-items: flex-start; gap: 8px; }
     }
   </style>
 </head>
@@ -303,6 +330,12 @@
 
     <!-- Top crops -->
     {% if crops %}
+
+    <!-- Show model note only when RF confidence is available -->
+    {% if crops[0].confidence is not none %}
+    <p class="model-note">🤖 Predictions powered by Random Forest ML model</p>
+    {% endif %}
+
     <p class="section-heading">Top 3 suggested crops</p>
 
     {% set badge_classes = ["rank-1","rank-2","rank-3"] %}
@@ -312,9 +345,14 @@
     <div class="crop-card">
       <div class="crop-header">
         <span class="crop-name">{{ c.name }}</span>
-        <span class="rank-badge {{ badge_classes[loop.index0] }}">
-          {{ badge_labels[loop.index0] }}
-        </span>
+        <div class="crop-badges">
+          {% if c.confidence is not none %}
+          <span class="confidence-badge">🤖 {{ c.confidence }}% match</span>
+          {% endif %}
+          <span class="rank-badge {{ badge_classes[loop.index0] }}">
+            {{ badge_labels[loop.index0] }}
+          </span>
+        </div>
       </div>
       <div class="stats-grid">
         <div class="stat-box">
