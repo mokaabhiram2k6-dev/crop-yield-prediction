@@ -12,24 +12,24 @@ app = Flask(__name__)
 # SOIL TYPE NORMALISATION
 # =========================
 SOIL_NORMALISE = {
-    "loamy soil":              "loamy",
-    "sandy loam":              "sandy",
-    "well-drained loam":       "loamy",
-    "rich silty soil":         "silty",
-    "moist loamy soil":        "loamy",
-    "loose sandy loam":        "sandy",
-    "well-drained loamy soil": "loamy",
-    "rich well-drained soil":  "loamy",
-    "red soils":               "red",
-    "red soil":                "red",
-    " red soil":               "red",
-    "arid and desert soils":   "sandy",
-    "alluvial soils":          "alluvial",
+    "loamy soil":                   "loamy",
+    "sandy loam":                   "sandy",
+    "well-drained loam":            "loamy",
+    "rich silty soil":              "silty",
+    "moist loamy soil":             "loamy",
+    "loose sandy loam":             "sandy",
+    "well-drained loamy soil":      "loamy",
+    "rich well-drained soil":       "loamy",
+    "red soils":                    "red",
+    "red soil":                     "red",
+    " red soil":                    "red",
+    "arid and desert soils":        "sandy",
+    "alluvial soils":               "alluvial",
     "laterite and lateritic soils": "laterite",
-    "black soils":             "black",
-    "saline and alkaline soils": "sandy",
-    "peaty and marshy soils":  "peaty",
-    "forest and mountain soils": "loamy",
+    "black soils":                  "black",
+    "saline and alkaline soils":    "sandy",
+    "peaty and marshy soils":       "peaty",
+    "forest and mountain soils":    "loamy",
 }
 
 SOIL_NUMERIC = {
@@ -43,49 +43,62 @@ SOIL_NUMERIC = {
 def load_data():
     frames = []
 
-    p1 = "data1.xlsx"
+    # ---------- data1 ----------
+    p1 = "data1_modified.xlsx"
     if os.path.exists(p1):
         df1 = pd.read_excel(p1)
         df1.columns = df1.columns.str.strip().str.lower()
+
+        # Exact column names from data1_modified.xlsx:
+        #   soil_temperature_c, avg_temperature_c, soil_moisture_percent,
+        #   humidity_percent, soil_ph, yield_kg_per_m2
         df1 = df1.rename(columns={
             "avg_temperature_c":    "temperature",
             "humidity_percent":     "humidity",
-            "yield_kg_per_m2":      "yield_raw",
             "soil_moisture_percent":"soil_moisture",
             "soil_temperature_c":   "soil_temperature",
+            "soil_ph":              "ph",
+            "yield_kg_per_m2":      "yield_raw",
         })
+
+        # Convert yield from kg/m² → kg/ha
         df1["yield"] = pd.to_numeric(df1.get("yield_raw", pd.Series(dtype=float)), errors="coerce") * 10000
-        if "ph" not in df1.columns and "soil_ph" in df1.columns:
-            df1["ph"] = pd.to_numeric(df1["soil_ph"], errors="coerce")
-        elif "ph" not in df1.columns:
+
+        # Ensure ph column exists
+        if "ph" not in df1.columns:
             df1["ph"] = 6.5
-        if "soil_moisture" not in df1.columns:
-            df1["soil_moisture"] = 60.0
-        if "soil_temperature" not in df1.columns:
-            df1["soil_temperature"] = df1.get("temperature", pd.Series(22.0))
+
         cols = ["crop_type", "soil_type", "temperature", "humidity", "ph",
                 "soil_moisture", "soil_temperature", "yield"]
         frames.append(df1[[c for c in cols if c in df1.columns]])
 
-    p2 = "data2.xlsx"
+    # ---------- data2 ----------
+    p2 = "data2_modified.xlsx"
     if os.path.exists(p2):
         df2 = pd.read_excel(p2)
         df2.columns = df2.columns.str.strip().str.lower()
+
+        # Exact column names from data2_modified.xlsx:
+        #   soil_moisture_%, temperature_c, soil_temperature_c,
+        #   humidity_%, soil_ph, yield_kg_per_hectare
         df2 = df2.rename(columns={
             "temperature_c":        "temperature",
             "humidity_%":           "humidity",
+            "soil_moisture_%":      "soil_moisture",
+            "soil_temperature_c":   "soil_temperature",
+            "soil_ph":              "ph",
             "yield_kg_per_hectare": "yield",
         })
+
+        # Ensure ph column exists
         if "ph" not in df2.columns:
             df2["ph"] = 6.5
-        if "soil_moisture" not in df2.columns:
-            df2["soil_moisture"] = 60.0
-        if "soil_temperature" not in df2.columns:
-            df2["soil_temperature"] = df2.get("temperature", pd.Series(22.0))
+
         cols = ["crop_type", "soil_type", "temperature", "humidity", "ph",
                 "soil_moisture", "soil_temperature", "yield"]
         frames.append(df2[[c for c in cols if c in df2.columns]])
 
+    # ---------- fallback ----------
     if not frames:
         data = {
             "soil_type":        ["loamy","loamy","loamy","sandy","sandy","clay","clay","silty","peaty","loamy",
@@ -106,9 +119,9 @@ def load_data():
         return pd.DataFrame(data)
 
     df = pd.concat(frames, ignore_index=True)
-    df["yield"]          = pd.to_numeric(df["yield"],          errors="coerce")
-    df["ph"]             = pd.to_numeric(df["ph"],             errors="coerce").fillna(6.5)
-    df["soil_moisture"]  = pd.to_numeric(df["soil_moisture"],  errors="coerce").fillna(60.0)
+    df["yield"]            = pd.to_numeric(df["yield"],            errors="coerce")
+    df["ph"]               = pd.to_numeric(df["ph"],               errors="coerce").fillna(6.5)
+    df["soil_moisture"]    = pd.to_numeric(df["soil_moisture"],    errors="coerce").fillna(60.0)
     df["soil_temperature"] = pd.to_numeric(df["soil_temperature"], errors="coerce").fillna(22.0)
     df = df.dropna(subset=["crop_type", "soil_type", "yield"])
     df["soil_type"] = (df["soil_type"]
@@ -192,7 +205,7 @@ raw_df              = load_data()
 clean_df            = remove_outliers_iqr(raw_df)
 rf_model, label_enc = train_model(clean_df)
 
-FEATURE_COLS = ["soil_num", "temperature", "humidity", "ph", "soil_moisture", "soil_temperature"]
+FEATURE_COLS     = ["soil_num", "temperature", "humidity", "ph", "soil_moisture", "soil_temperature"]
 TRAINED_FEATURES = [c for c in FEATURE_COLS if c in clean_df.columns]
 
 
@@ -204,12 +217,12 @@ def rf_predict(soil_type, temperature, humidity, ph, soil_moisture, soil_tempera
         return []
     soil_num = SOIL_NUMERIC.get(soil_type.lower(), 0)
     feat_map = {
-        "soil_num":        soil_num,
-        "temperature":     temperature,
-        "humidity":        humidity,
-        "ph":              ph,
-        "soil_moisture":   soil_moisture,
-        "soil_temperature":soil_temperature,
+        "soil_num":         soil_num,
+        "temperature":      temperature,
+        "humidity":         humidity,
+        "ph":               ph,
+        "soil_moisture":    soil_moisture,
+        "soil_temperature": soil_temperature,
     }
     X_input = np.array([[feat_map[f] for f in TRAINED_FEATURES]])
     proba   = rf_model.predict_proba(X_input)[0]
