@@ -192,21 +192,18 @@ def train_model(df):
         model.fit(X_train, y_train)
         acc = model.score(X_test, y_test)
         print(f"[RF] Accuracy: {acc*100:.1f}% | Features: {available} | Classes: {list(le.classes_)}")
-        return model, le
+        return model, le, available
     except Exception as e:
         print(f"[RF] Training failed: {e}")
-        return None, None
+        return None, None, []
 
 
 # =========================
 # STARTUP
 # =========================
-raw_df              = load_data()
-clean_df            = remove_outliers_iqr(raw_df)
-rf_model, label_enc = train_model(clean_df)
-
-FEATURE_COLS     = ["soil_num", "temperature", "humidity", "ph", "soil_moisture", "soil_temperature"]
-TRAINED_FEATURES = [c for c in FEATURE_COLS if c in clean_df.columns]
+raw_df                                = load_data()
+clean_df                              = remove_outliers_iqr(raw_df)
+rf_model, label_enc, TRAINED_FEATURES = train_model(clean_df)
 
 
 # =========================
