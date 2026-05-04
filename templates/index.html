@@ -303,6 +303,16 @@
       border-radius: 99px;
       padding: 3px 10px;
       white-space: nowrap;
+      background: #fde8e8;
+      color: #7c1c1c;
+      border: 1.5px solid #f5a5a5;
+    }
+    .temp-caution-badge {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 99px;
+      padding: 3px 10px;
+      white-space: nowrap;
       background: #fff3cd;
       color: #835400;
       border: 1.5px solid #ffc107;
@@ -497,8 +507,10 @@
           {% endif %}
 
           {# ── Temperature warning badge ── #}
-          {% if c.temp_warning %}
-          <span class="temp-warn-badge">⚠️ Temp &gt; {{ c.max_temp }}°C limit</span>
+          {% if c.temp_status == 'exceeded' %}
+          <span class="temp-warn-badge">🌡️ Exceeds {{ c.max_temp }}°C limit</span>
+          {% elif c.temp_status == 'caution' %}
+          <span class="temp-caution-badge">⚠️ Near {{ c.max_temp }}°C limit</span>
           {% endif %}
 
           {# ── Confidence badge ── #}
