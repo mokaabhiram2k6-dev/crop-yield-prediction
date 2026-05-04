@@ -192,7 +192,6 @@ raw_df              = load_data()
 clean_df            = remove_outliers_iqr(raw_df)
 rf_model, label_enc = train_model(clean_df)
 
-# Store feature list used during training
 FEATURE_COLS = ["soil_num", "temperature", "humidity", "ph", "soil_moisture", "soil_temperature"]
 TRAINED_FEATURES = [c for c in FEATURE_COLS if c in clean_df.columns]
 
@@ -240,6 +239,32 @@ COSTS = {
 DEFAULT_PRICE = 50
 DEFAULT_COST  = 25000
 
+# =========================
+# NEW: WATER INTENSITY & MAX TEMP
+# =========================
+WATER_INTENSITY = {
+    "Rice": "High",      "Sugarcane": "High",    "Banana": "High",
+    "Tomato": "High",    "Cucumber": "High",      "Cotton": "High",
+    "Wheat": "Moderate", "Maize": "Moderate",     "Soybean": "Moderate",
+    "Onion": "Moderate", "Garlic": "Moderate",    "Chili": "Moderate",
+    "Mustard": "Moderate","Turmeric": "Moderate", "Pepper": "Moderate",
+    "Lettuce": "Moderate","Spinach": "Moderate",  "Beans": "Moderate",
+    "Groundnut": "Low",  "Bajra": "Low",          "Jowar": "Low",
+    "Ragi": "Low",       "Radish": "Low",         "Basil": "Low",
+    "Sprouts": "Low",    "Cashew": "Low",
+}
+
+MAX_TEMP = {
+    "Rice": 35,     "Wheat": 30,    "Maize": 38,    "Cotton": 40,
+    "Sugarcane": 38,"Soybean": 33,  "Groundnut": 38,"Turmeric": 35,
+    "Tomato": 33,   "Onion": 32,    "Banana": 36,   "Jowar": 42,
+    "Bajra": 42,    "Ragi": 35,     "Chili": 38,    "Garlic": 30,
+    "Mustard": 28,  "Cashew": 38,   "Cucumber": 32, "Pepper": 32,
+    "Lettuce": 25,  "Spinach": 25,  "Radish": 25,   "Beans": 30,
+    "Basil": 35,    "Sprouts": 25,
+}
+DEFAULT_MAX_TEMP = 38
+
 # Optimal ranges for suitability scoring (min, max, ideal)
 OPTIMAL = {
     "soil_moisture":    (0,   100,  65),
@@ -263,7 +288,6 @@ BOUNDS = {
 
 
 def normalized_score(value, lo, hi, ideal, weight=100):
-    """Score 0–weight based on distance from ideal, normalized to range."""
     half_range = max(abs(ideal - lo), abs(hi - ideal))
     if half_range == 0:
         return weight
@@ -326,12 +350,11 @@ def index():
             )
             result = round(result, 1)
 
-            # --- RF prediction (uses all 6 features now) ---
+            # --- RF prediction ---
             rf_results = rf_predict(soil, temp, humidity, ph, soil_moisture, soil_temp, top_n=3)
 
             if rf_results:
                 for crop_name, confidence in rf_results:
-                    # Yield: prefer soil-matched rows, fall back to all rows
                     soil_rows = clean_df[
                         (clean_df["crop_type"] == crop_name) &
                         (clean_df["soil_type"] == soil.lower())
@@ -344,14 +367,18 @@ def index():
                     cost    = COSTS.get(crop_name,  DEFAULT_COST)
                     revenue = round(yield_val * price, 2)
                     profit  = round(revenue - cost, 2)
+                    max_t   = MAX_TEMP.get(crop_name, DEFAULT_MAX_TEMP)
                     crops.append({
-                        "name":       crop_name,
-                        "yield":      round(yield_val, 2),
-                        "price":      price,
-                        "cost":       cost,
-                        "revenue":    revenue,
-                        "profit":     profit,
-                        "confidence": round(confidence * 100, 1),
+                        "name":            crop_name,
+                        "yield":           round(yield_val, 2),
+                        "price":           price,
+                        "cost":            cost,
+                        "revenue":         revenue,
+                        "profit":          profit,
+                        "confidence":      round(confidence * 100, 1),
+                        "water_intensity": WATER_INTENSITY.get(crop_name, "Moderate"),
+                        "max_temp":        max_t,
+                        "temp_warning":    temp > max_t,
                     })
 
             else:
@@ -375,14 +402,18 @@ def index():
                     cost      = COSTS.get(name,  DEFAULT_COST)
                     revenue   = round(yield_val * price, 2)
                     profit    = round(revenue - cost, 2)
+                    max_t     = MAX_TEMP.get(name, DEFAULT_MAX_TEMP)
                     crops.append({
-                        "name":       name,
-                        "yield":      round(yield_val, 2),
-                        "price":      price,
-                        "cost":       cost,
-                        "revenue":    revenue,
-                        "profit":     profit,
-                        "confidence": None,
+                        "name":            name,
+                        "yield":           round(yield_val, 2),
+                        "price":           price,
+                        "cost":            cost,
+                        "revenue":         revenue,
+                        "profit":          profit,
+                        "confidence":      None,
+                        "water_intensity": WATER_INTENSITY.get(name, "Moderate"),
+                        "max_temp":        max_t,
+                        "temp_warning":    temp > max_t,
                     })
 
         except ValueError as e:
