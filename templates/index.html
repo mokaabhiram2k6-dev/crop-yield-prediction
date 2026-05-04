@@ -256,7 +256,13 @@
       font-weight: 700;
       color: #1a1a1a;
     }
-    .crop-badges { display: flex; gap: 6px; align-items: center; }
+    .crop-badges {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
     .rank-badge {
       font-size: 11px;
       font-weight: 700;
@@ -276,6 +282,30 @@
       border-radius: 99px;
       padding: 3px 10px;
       white-space: nowrap;
+    }
+
+    /* ── NEW: Water intensity badges ── */
+    .water-badge {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 99px;
+      padding: 3px 10px;
+      white-space: nowrap;
+    }
+    .wi-high { background: #fde8e8; color: #7c1c1c; }
+    .wi-mod  { background: #fff3cd; color: #835400; }
+    .wi-low  { background: #e8f5e9; color: #1b5e20; }
+
+    /* ── NEW: Temperature warning badge ── */
+    .temp-warn-badge {
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: 99px;
+      padding: 3px 10px;
+      white-space: nowrap;
+      background: #fff3cd;
+      color: #835400;
+      border: 1.5px solid #ffc107;
     }
 
     .stats-grid {
@@ -317,6 +347,7 @@
       .grid2 { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: repeat(3, 1fr); }
       .crop-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+      .crop-badges { justify-content: flex-start; }
     }
   </style>
 </head>
@@ -454,12 +485,32 @@
       <div class="crop-header">
         <span class="crop-name">{{ c.name }}</span>
         <div class="crop-badges">
+
+          {# ── Water intensity badge ── #}
+          {% set wi = c.water_intensity %}
+          {% if wi == 'High' %}
+            <span class="water-badge wi-high">💧💧💧 High water</span>
+          {% elif wi == 'Low' %}
+            <span class="water-badge wi-low">💧 Low water</span>
+          {% else %}
+            <span class="water-badge wi-mod">💧💧 Moderate water</span>
+          {% endif %}
+
+          {# ── Temperature warning badge ── #}
+          {% if c.temp_warning %}
+          <span class="temp-warn-badge">⚠️ Temp &gt; {{ c.max_temp }}°C limit</span>
+          {% endif %}
+
+          {# ── Confidence badge ── #}
           {% if c.confidence is not none %}
           <span class="confidence-badge">🤖 {{ c.confidence }}% match</span>
           {% endif %}
+
+          {# ── Rank badge ── #}
           <span class="rank-badge {{ badge_classes[loop.index0] }}">
             {{ badge_labels[loop.index0] }}
           </span>
+
         </div>
       </div>
       <div class="stats-grid">
