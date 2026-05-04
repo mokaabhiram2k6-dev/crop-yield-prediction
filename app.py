@@ -240,7 +240,7 @@ DEFAULT_PRICE = 50
 DEFAULT_COST  = 25000
 
 # =========================
-# NEW: WATER INTENSITY & MAX TEMP
+# WATER INTENSITY & MAX TEMP
 # =========================
 WATER_INTENSITY = {
     "Rice": "High",      "Sugarcane": "High",    "Banana": "High",
@@ -265,7 +265,7 @@ MAX_TEMP = {
 }
 DEFAULT_MAX_TEMP = 38
 
-# Optimal ranges for suitability scoring (min, max, ideal)
+# Optimal ranges for suitability scoring
 OPTIMAL = {
     "soil_moisture":    (0,   100,  65),
     "temperature":      (-10,  60,  25),
@@ -317,7 +317,7 @@ def index():
             sunlight      = float(request.form.get("sunlight", 0))
             ph            = float(request.form.get("ph", 7.0))
 
-            # Validation
+            # ── Range validation ──
             fields = {
                 "soil_moisture": soil_moisture, "temperature": temp,
                 "soil_temperature": soil_temp,  "rainfall": rainfall,
@@ -328,13 +328,45 @@ def index():
                 if not (lo <= val <= hi):
                     raise ValueError(f"{field.replace('_',' ').upper()} must be between {lo} and {hi}.")
 
+            # ── Zero / critically-low value checks ──
+            if ph == 0:
+                raise ValueError(
+                    "❌ Crops cannot be grown with pH 0. "
+                    "Please enter a valid pH (typically 5.5 – 7.5)."
+                )
+            if ph < 3.5:
+                raise ValueError(
+                    f"❌ pH {ph} is extremely acidic — no crops can survive at this level. "
+                    "Minimum viable pH is 3.5."
+                )
+            if soil_moisture == 0:
+                raise ValueError(
+                    "❌ Crops cannot be grown with 0% soil moisture. "
+                    "Please enter a realistic value (typically 30 – 80%)."
+                )
+            if soil_moisture < 10:
+                raise ValueError(
+                    f"❌ Soil moisture {soil_moisture}% is critically low — crops cannot be grown. "
+                    "Minimum viable soil moisture is 10%."
+                )
+            if soil_temp == 0:
+                raise ValueError(
+                    "❌ Crops cannot be grown with 0°C soil temperature. "
+                    "Please enter a realistic value (typically 10 – 35°C)."
+                )
+            if soil_temp < 5:
+                raise ValueError(
+                    f"❌ Soil temperature {soil_temp}°C is too cold for any crop growth. "
+                    "Minimum viable soil temperature is 5°C."
+                )
+
             form = {
                 "soil": soil, "soil_moisture": soil_moisture, "temperature": temp,
                 "soil_temperature": soil_temp, "rainfall": rainfall,
                 "humidity": humidity, "sunlight": sunlight, "ph": ph,
             }
 
-            # --- Normalised suitability score (0–700 max) ---
+            # ── Normalised suitability score (0–700 max) ──
             weights = {
                 "soil_moisture":    (soil_moisture, *OPTIMAL["soil_moisture"],    120),
                 "temperature":      (temp,          *OPTIMAL["temperature"],       100),
@@ -350,7 +382,7 @@ def index():
             )
             result = round(result, 1)
 
-            # --- RF prediction ---
+            # ── RF prediction ──
             rf_results = rf_predict(soil, temp, humidity, ph, soil_moisture, soil_temp, top_n=3)
 
             if rf_results:
