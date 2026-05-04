@@ -368,6 +368,12 @@ def index():
                     revenue = round(yield_val * price, 2)
                     profit  = round(revenue - cost, 2)
                     max_t   = MAX_TEMP.get(crop_name, DEFAULT_MAX_TEMP)
+                    if temp > max_t:
+                        temp_status = "exceeded"
+                    elif temp >= max_t - 5:
+                        temp_status = "caution"
+                    else:
+                        temp_status = "ok"
                     crops.append({
                         "name":            crop_name,
                         "yield":           round(yield_val, 2),
@@ -379,6 +385,7 @@ def index():
                         "water_intensity": WATER_INTENSITY.get(crop_name, "Moderate"),
                         "max_temp":        max_t,
                         "temp_warning":    temp > max_t,
+                        "temp_status":     temp_status,
                     })
 
             else:
@@ -403,6 +410,12 @@ def index():
                     revenue   = round(yield_val * price, 2)
                     profit    = round(revenue - cost, 2)
                     max_t     = MAX_TEMP.get(name, DEFAULT_MAX_TEMP)
+                    if temp > max_t:
+                        temp_status = "exceeded"
+                    elif temp >= max_t - 5:
+                        temp_status = "caution"
+                    else:
+                        temp_status = "ok"
                     crops.append({
                         "name":            name,
                         "yield":           round(yield_val, 2),
@@ -414,6 +427,7 @@ def index():
                         "water_intensity": WATER_INTENSITY.get(name, "Moderate"),
                         "max_temp":        max_t,
                         "temp_warning":    temp > max_t,
+                        "temp_status":     temp_status,
                     })
 
         except ValueError as e:
